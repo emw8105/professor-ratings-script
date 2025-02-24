@@ -95,11 +95,11 @@ try:
 
         # these values can possibly be "N/A" so we need to check for that
         rating_text = rating_tag.text.strip() if rating_tag else "N/A"
-        rating = float(rating_text) if rating_text != "N/A" else None
+        rating = float(rating_text) if rating_text != "N/A" else "N/A"
         would_take_again_text = would_take_again_tag.text.strip().replace('%', '') if would_take_again_tag else "N/A"
-        would_take_again = float(would_take_again_text) if would_take_again_text != "N/A" else None
+        would_take_again = float(would_take_again_text) if would_take_again_text != "N/A" else "N/A"
         difficulty_text = difficulty_tag[1].text.strip() if difficulty_tag and len(difficulty_tag) > 1 else "N/A"
-        difficulty = float(difficulty_text) if difficulty_text != "N/A" else None
+        difficulty = float(difficulty_text) if difficulty_text != "N/A" else "N/A"
         
 
         # get the professor's URL and ID from its href attribute
