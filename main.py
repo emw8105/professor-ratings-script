@@ -67,7 +67,7 @@ def wait_for_professor_cards(driver):
         print("Professor cards did not load in time:", e)
 
 def extract_professor_data(page_source):
-    """Extracts professor data from the page source."""
+    """Extracts and normalizes professor data from the page source."""
     try:
         print("Parsing data...")
         soup = BeautifulSoup(page_source, "html.parser")
@@ -99,20 +99,21 @@ def extract_professor_data(page_source):
             prof_url = "https://www.ratemyprofessors.com" + prof['href']
             prof_id = prof['href'].split('/')[-1]
 
-            professor_data[name] = {
+            normalized_name = " ".join(name.lower().split()) # used to help with matching to the grades data
+
+            professor_data[normalized_name] = {
                 "id": prof_id,
                 "department": department,
                 "url": prof_url,
                 "quality_rating": rating,
                 "difficulty_rating": difficulty,
                 "would_take_again": would_take_again,
-                "original_format": name,
+                "original_format": name, # original format can be used for reference in case the normalized name butchers the original
                 "last_updated": datetime.datetime.now().isoformat()
             }
         return professor_data
-
     except Exception as e:
-        print("An error occurred during data extraction:", e)
+        print(f"Error extracting professor data: {e}")
         return {}
 
 def scrape_rmp_data(university_id):
@@ -258,34 +259,33 @@ def save_without_grades(professor_data, output_filename="professor_ratings_no_gr
 
     print(f"Professor ratings (without grades) saved to {output_filename}")
 
-import json
+def normalize_name(name):
+    """Normalizes names to 'First Last' format, lowercase, and removes extra spaces."""
+    name = " ".join(name.split())  # Remove extra spaces
+    if ", " in name:
+        last, first = name.split(", ", 1)
+        return f"{first.strip().lower()} {last.strip().lower()}"
+    return name.strip().lower()
 
 def match_professor_names(ratings, rmp_data):
-    """
-    Matches professor data, handles different name formats, and saves unmatched names.
-    """
+    """Matches professor data, handles name variations, and saves unmatched names."""
     matched_data = {}
     unmatched_ratings = []
     unmatched_rmp = []
 
-    def normalize_name(name):
-        """Normalizes names to 'First Last' format."""
-        if ", " in name:
-            last, first = name.split(", ", 1)
-            return f"{first} {last}"
-        return name
-
+    # Normalize names in both datasets
     normalized_ratings = {normalize_name(name): data for name, data in ratings.items()}
+    normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
 
-    for rmp_name, rmp_info in rmp_data.items():
+    for rmp_name, rmp_info in normalized_rmp_data.items():
         if rmp_name in normalized_ratings:
-            matched_data[rmp_name] = {**rmp_info, **ratings[list(ratings.keys())[list(normalized_ratings.keys()).index(rmp_name)]]}
+            original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(rmp_name)]
+            matched_data[rmp_name] = {**rmp_info, **ratings[original_ratings_name]}
         else:
             unmatched_rmp.append(rmp_name)
 
-    for ratings_name, ratings_info in ratings.items():
-        normalized_name = normalize_name(ratings_name)
-        if normalized_name not in rmp_data:
+    for ratings_name, ratings_info in normalized_ratings.items():
+        if ratings_name not in normalized_rmp_data:
             unmatched_ratings.append(ratings_name)
 
     print(f"Unmatched Ratings: {len(unmatched_ratings)}")
@@ -303,22 +303,15 @@ def match_professor_names(ratings, rmp_data):
 
 def main():
     # commented out for testing the matching function, just pulls the previously saved json data from the file rather than recalculating every time
+    
     # ratings = calculate_professor_ratings() # get the ratings
-    # # find_duplicate_course_numbers(ratings) # test
     # save_without_grades(ratings) # example output with just aggregate data
-
-    # # output_filename = "professor_ratings.json"
-    # # with open(output_filename, "w", encoding="utf-8") as outfile:
-    # #     json.dump(ratings, outfile, indent=4, ensure_ascii=False)
-
-    # # print(f"Professor ratings saved to {output_filename}")
 
     # print("Scraping professor data from RateMyProfessors...")
     # scrape_rmp_data(university_id="1273")
 
-    # # now we need to match the data from the two sources
-
-
+    # match the data from the two sources
+    # currently pre-loading the data for testing, comment this section and uncomment the calculation/scraping above to recompute
     # Load pre-scraped ratings data
     print("Loading professor ratings data...")
     with open("professor_ratings_no_grades.json", "r", encoding="utf-8") as file:
