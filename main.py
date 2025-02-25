@@ -136,7 +136,7 @@ def scrape_rmp_data(university_id):
     professor_data = extract_professor_data(page_source)
 
     if professor_data:
-        with open("professors.json", "w", encoding="utf-8") as f:
+        with open("rmp_ratings.json", "w", encoding="utf-8") as f:
             json.dump(professor_data, f, indent=4, ensure_ascii=False)
         print("Data extraction and file writing complete.")
     else:
@@ -162,7 +162,7 @@ def calculate_professor_ratings(data_dir="data"):
     Returns:
         dict: A dictionary containing professor ratings. The keys are professor
               names, and the values are dictionaries containing:
-              - 'overall_rating': The professor's overall rating (scaled out of 5)
+              - 'overall_grade_rating': The professor's overall rating of their aggregated grade distributions (scaled out of 5)
               - 'course_ratings': A dictionary of course-specific ratings.
     """
     professor_data = {}
@@ -231,7 +231,7 @@ def calculate_professor_ratings(data_dir="data"):
 
         overall_rating = round((total_points / total_count) / 4.0 * 5, 2) if total_count > 0 else "N/A" # calculate the overall rating, round to 2 decimal places
 
-        professor_data[instructor]["overall_rating"] = overall_rating
+        professor_data[instructor]["overall_grade_rating"] = overall_rating
 
         course_ratings = {}
         for course, grades in data["course_grades"].items():
@@ -245,10 +245,10 @@ def calculate_professor_ratings(data_dir="data"):
 
 # this is how the data will be saved in theory, the grade distributions themselves arent necessary as we can just get them from the CSVs
 # the aggregate data is the part that matters
-def save_without_grades(professor_data, output_filename="professor_ratings_no_grades.json"):
+def save_without_grades(professor_data, output_filename="grade_ratings.json"):
     filtered_data = {
         instructor: {
-            "overall_rating": data["overall_rating"],
+            "overall_grade_rating": data["overall_grade_rating"],
             "course_ratings": data["course_ratings"]
         }
         for instructor, data in professor_data.items()
@@ -369,22 +369,22 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 def main():
     # commented out for testing the matching function, just pulls the previously saved json data from the file rather than recalculating every time
     
-    # ratings = calculate_professor_ratings() # get the ratings
-    # save_without_grades(ratings) # example output with just aggregate data
+    ratings = calculate_professor_ratings() # get the ratings
+    save_without_grades(ratings) # example output with just aggregate data
 
-    # print("Scraping professor data from RateMyProfessors...")
-    # scrape_rmp_data(university_id="1273")
+    print("Scraping professor data from RateMyProfessors...")
+    scrape_rmp_data(university_id="1273")
 
     # match the data from the two sources
     # currently pre-loading the data for testing, comment this section and uncomment the calculation/scraping above to recompute
     # Load pre-scraped ratings data
     print("Loading professor ratings data...")
-    with open("professor_ratings_no_grades.json", "r", encoding="utf-8") as file:
+    with open("grade_ratings.json", "r", encoding="utf-8") as file:
         ratings = json.load(file)
 
     # Load pre-scraped RMP data
     print("Loading RateMyProfessors data...")
-    with open("professors.json", "r", encoding="utf-8") as file:
+    with open("rmp_ratings.json", "r", encoding="utf-8") as file:
         rmp_data = json.load(file)
 
     print("Matching professor data from both sources...")
