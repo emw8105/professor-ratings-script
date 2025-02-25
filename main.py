@@ -260,14 +260,21 @@ def save_without_grades(professor_data, output_filename="professor_ratings_no_gr
     print(f"Professor ratings (without grades) saved to {output_filename}")
 
 def normalize_name(name):
-    """Normalizes names to 'First Last' format, lowercase, and removes extra spaces."""
+    """Normalizes names, removes periods, handles middle names, and potential swaps."""
     name = " ".join(name.split())  # Remove extra spaces
+    name = re.sub(r'\.', '', name)  # Remove all periods
+    
     if ", " in name:
         last, first = name.split(", ", 1)
         return f"{first.strip().lower()} {last.strip().lower()}"
-    return name.strip().lower()
+    else:
+        parts = name.split()
+        if len(parts) > 2:  # Potential middle name
+            return f"{parts[0].strip().lower()} {parts[-1].strip().lower()}"
+        else:
+            return name.strip().lower()
 
-def match_professor_names(ratings, rmp_data):
+def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     """Matches professor data, handles name variations, and saves unmatched names."""
     matched_data = {}
     unmatched_ratings = []
@@ -277,6 +284,7 @@ def match_professor_names(ratings, rmp_data):
     normalized_ratings = {normalize_name(name): data for name, data in ratings.items()}
     normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
 
+    # Direct matching
     for rmp_name, rmp_info in normalized_rmp_data.items():
         if rmp_name in normalized_ratings:
             original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(rmp_name)]
@@ -284,9 +292,66 @@ def match_professor_names(ratings, rmp_data):
         else:
             unmatched_rmp.append(rmp_name)
 
+    # fuzzy matching for unmatched ratings
     for ratings_name, ratings_info in normalized_ratings.items():
         if ratings_name not in normalized_rmp_data:
-            unmatched_ratings.append(ratings_name)
+            best_match = None
+            best_score = 0
+            for rmp_name in normalized_rmp_data:
+                score = fuzz.ratio(ratings_name, rmp_name)
+                if score > best_score and score >= fuzzy_threshold and abs(len(ratings_name) - len(rmp_name)) < 5:
+                    best_score = score
+                    best_match = rmp_name
+
+            if best_match:
+                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(ratings_name)]
+                matched_data[best_match] = {**normalized_rmp_data[best_match], **ratings[original_ratings_name]}
+            else:
+                unmatched_ratings.append(ratings_name)
+
+    
+    #check for middle name mismatches
+    unmatched_ratings_copy = unmatched_ratings[:]
+    for ratings_name in unmatched_ratings_copy:
+        ratings_parts = ratings_name.split()
+        if len(ratings_parts) > 2:
+            shortened_ratings_name = f"{ratings_parts[0]} {ratings_parts[-1]}"
+            if shortened_ratings_name in normalized_rmp_data:
+                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(ratings_name)]
+                matched_data[shortened_ratings_name] = {**normalized_rmp_data[shortened_ratings_name], **ratings[original_ratings_name]}
+                if ratings_name in unmatched_ratings:
+                    unmatched_ratings.remove(ratings_name)
+                if shortened_ratings_name in unmatched_rmp:
+                    unmatched_rmp.remove(shortened_ratings_name)
+
+    #check for middle name mismatches in rmp
+    unmatched_rmp_copy = unmatched_rmp[:]
+    for rmp_name in unmatched_rmp_copy:
+        rmp_parts = rmp_name.split()
+        if len(rmp_parts) > 2:
+            shortened_rmp_name = f"{rmp_parts[0]} {rmp_parts[-1]}"
+            if shortened_rmp_name in normalized_ratings:
+                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(shortened_rmp_name)]
+                matched_data[rmp_name] = {**normalized_rmp_data[rmp_name], **ratings[original_ratings_name]}
+                if rmp_name in unmatched_rmp:
+                    unmatched_rmp.remove(rmp_name)
+                if shortened_rmp_name in unmatched_ratings:
+                    unmatched_ratings.remove(shortened_rmp_name)
+            elif shortened_rmp_name in unmatched_rmp:
+                if shortened_rmp_name in unmatched_rmp:
+                    unmatched_rmp.remove(shortened_rmp_name)
+
+    #check for flipped names
+    unmatched_ratings_copy = unmatched_ratings[:]
+    for ratings_name in unmatched_ratings_copy:
+        ratings_parts = ratings_name.split()
+        if len(ratings_parts) == 2:
+            flipped_name = f"{ratings_parts[1]} {ratings_parts[0]}"
+            if flipped_name in normalized_rmp_data:
+                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(ratings_name)]
+                matched_data[flipped_name] = {**normalized_rmp_data[flipped_name], **ratings[original_ratings_name]}
+                unmatched_ratings.remove(ratings_name)
+                unmatched_rmp.remove(flipped_name)
 
     print(f"Unmatched Ratings: {len(unmatched_ratings)}")
     print(f"Unmatched RMP: {len(unmatched_rmp)}")
