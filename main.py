@@ -260,124 +260,177 @@ def save_without_grades(professor_data, output_filename="grade_ratings.json"):
     print(f"Professor ratings (without grades) saved to {output_filename}")
 
 def normalize_name(name):
-    """Normalizes names, removes periods, handles middle names, and potential swaps."""
-    name = " ".join(name.split())  # Remove extra spaces
-    name = re.sub(r'\.', '', name)  # Remove all periods
+    """Normalizes names, removes periods, handles middle names, replaces hyphens, and potential swaps."""
+    name = " ".join(name.split())
+    name = re.sub(r'\.', '', name)
+    name = name.replace('-', ' ')
     
-    if ", " in name:
+    if ", " in name: # handle the Last, First formats by splitting up and swapping
         last, first = name.split(", ", 1)
         return f"{first.strip().lower()} {last.strip().lower()}"
     else:
         parts = name.split()
-        if len(parts) > 2:  # Potential middle name
+        if len(parts) > 2:
             return f"{parts[0].strip().lower()} {parts[-1].strip().lower()}"
         else:
             return name.strip().lower()
 
+
+def generate_name_variations(name):
+    """Generates variations of a name by trying different combinations of parts."""
+    parts = name.split()
+    variations = {name}  # Start with the original name
+
+    if len(parts) > 2:
+        variations.add(f"{parts[0]} {parts[-1]}")  # First and last
+        variations.add(f"{parts[-1]} {parts[0]}") # last and first
+        variations.add(parts[0]) # first name only
+        variations.add(parts[-1]) # last name only
+
+        # Try removing middle parts
+        for i in range(1, len(parts) - 1):
+            variations.add(" ".join(parts[:i] + parts[i+1:]))
+
+        #try removing first name
+        variations.add(" ".join(parts[1:]))
+
+        # Handle multi-part last names
+        if len(parts) > 3:
+            variations.add(f"{parts[0]} {parts[-2]} {parts[-1]}") # First name and the last 2 parts of the last name
+            variations.add(f"{parts[0]} {parts[-3]} {parts[-2]} {parts[-1]}")
+            variations.add(f"{parts[0]} {parts[-3]} {parts[-2]}")
+            variations.add(f"{parts[0]} {parts[-3]}")
+
+        # Direct first/last name combination (corrected)
+        variations.add(f"{parts[0]} {parts[2]}") #add the first and the third part of the name, this one is for you Andres Ricardo Sanchez De La Rosa aka Andres Sanchez
+        variations.add(f"{parts[0]} {parts[1]}") #add the first and second part of the name, this one is for you Carlos Busso Recabarren aka Carlos Busso
+
+    return variations
+
 def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     """Matches professor data, handles name variations, and saves unmatched names."""
     matched_data = {}
-    unmatched_ratings = []
-    unmatched_rmp = []
+    unmatched_ratings_original = list(ratings.keys())
+    unmatched_rmp = list(rmp_data.keys())
 
-    # Normalize names in both datasets
-    normalized_ratings = {normalize_name(name): data for name, data in ratings.items()}
+    normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
     normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
 
-    # Direct matching
-    for rmp_name, rmp_info in normalized_rmp_data.items():
-        if rmp_name in normalized_ratings:
-            original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(rmp_name)]
-            matched_data[rmp_name] = {**rmp_info, **ratings[original_ratings_name]}
-        else:
-            unmatched_rmp.append(rmp_name)
+    # direct matching, if the normalized name is the same in both datasets, it's a direct match
+    matched_direct = []
+    direct_match_count = 0
 
-    # fuzzy matching for unmatched ratings
-    for ratings_name, ratings_info in normalized_ratings.items():
-        if ratings_name not in normalized_rmp_data:
-            best_match = None
-            best_score = 0
-            for rmp_name in normalized_rmp_data:
-                score = fuzz.ratio(ratings_name, rmp_name)
-                if score > best_score and score >= fuzzy_threshold and abs(len(ratings_name) - len(rmp_name)) < 5:
-                    best_score = score
-                    best_match = rmp_name
+    for rmp_norm, rmp_info in normalized_rmp_data.items():
+        if rmp_norm in normalized_ratings:
+            original_ratings_name, ratings_info = normalized_ratings[rmp_norm]
+            matched_data[original_ratings_name] = {**rmp_info, **ratings_info}
+            matched_direct.append(original_ratings_name)
+            if original_ratings_name in unmatched_ratings_original:
+                unmatched_ratings_original.remove(original_ratings_name)
+            if list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)] in unmatched_rmp:
+                unmatched_rmp.remove(list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)])
+            direct_match_count += 1
+    print(f"Direct Matches: {direct_match_count}")
 
-            if best_match:
-                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(ratings_name)]
-                matched_data[best_match] = {**normalized_rmp_data[best_match], **ratings[original_ratings_name]}
-            else:
-                unmatched_ratings.append(ratings_name)
+    # iterate over the remaining unmatched ratings' name variations and rmp names to find fuzzy matches
+    remaining_ratings = {k: ratings[k] for k in unmatched_ratings_original}
+    normalized_remaining_ratings = {normalize_name(name): (name, data) for name, data in remaining_ratings.items()} #create normalized remaining ratings
 
-    
-    #check for middle name mismatches
-    unmatched_ratings_copy = unmatched_ratings[:]
-    for ratings_name in unmatched_ratings_copy:
-        ratings_parts = ratings_name.split()
-        if len(ratings_parts) > 2:
-            shortened_ratings_name = f"{ratings_parts[0]} {ratings_parts[-1]}"
-            if shortened_ratings_name in normalized_rmp_data:
-                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(ratings_name)]
-                matched_data[shortened_ratings_name] = {**normalized_rmp_data[shortened_ratings_name], **ratings[original_ratings_name]}
-                if ratings_name in unmatched_ratings:
-                    unmatched_ratings.remove(ratings_name)
-                if shortened_ratings_name in unmatched_rmp:
-                    unmatched_rmp.remove(shortened_ratings_name)
+    print(f"Remaining Ratings to Fuzzy Match: {len(normalized_remaining_ratings)}")
 
-    #check for middle name mismatches in rmp
-    unmatched_rmp_copy = unmatched_rmp[:]
-    for rmp_name in unmatched_rmp_copy:
-        rmp_parts = rmp_name.split()
-        if len(rmp_parts) > 2:
-            shortened_rmp_name = f"{rmp_parts[0]} {rmp_parts[-1]}"
-            if shortened_rmp_name in normalized_ratings:
-                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(shortened_rmp_name)]
-                matched_data[rmp_name] = {**normalized_rmp_data[rmp_name], **ratings[original_ratings_name]}
-                if rmp_name in unmatched_rmp:
-                    unmatched_rmp.remove(rmp_name)
-                if shortened_rmp_name in unmatched_ratings:
-                    unmatched_ratings.remove(shortened_rmp_name)
-            elif shortened_rmp_name in unmatched_rmp:
-                if shortened_rmp_name in unmatched_rmp:
-                    unmatched_rmp.remove(shortened_rmp_name)
+    for ratings_norm, (original_ratings_name, ratings_info) in normalized_remaining_ratings.items():
+        if original_ratings_name not in unmatched_ratings_original:
+            continue
+        best_match = None
+        best_score = 0
 
-    #check for flipped names
-    unmatched_ratings_copy = unmatched_ratings[:]
-    for ratings_name in unmatched_ratings_copy:
-        ratings_parts = ratings_name.split()
-        if len(ratings_parts) == 2:
-            flipped_name = f"{ratings_parts[1]} {ratings_parts[0]}"
-            if flipped_name in normalized_rmp_data:
-                original_ratings_name = list(ratings.keys())[list(normalized_ratings.keys()).index(ratings_name)]
-                matched_data[flipped_name] = {**normalized_rmp_data[flipped_name], **ratings[original_ratings_name]}
-                unmatched_ratings.remove(ratings_name)
-                unmatched_rmp.remove(flipped_name)
+        for rmp_norm, rmp_info in normalized_rmp_data.items():
+            if list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)] not in unmatched_rmp:
+                continue
 
-    print(f"Unmatched Ratings: {len(unmatched_ratings)}")
+            for ratings_variation in generate_name_variations(ratings_norm):
+                for rmp_variation in generate_name_variations(rmp_norm):
+                    score = fuzz.ratio(ratings_variation, rmp_variation)
+                    if score > best_score and score >= fuzzy_threshold:
+                        best_score = score
+                        best_match = rmp_norm
+
+        if best_match:
+            matched_data[original_ratings_name] = {**normalized_rmp_data[best_match], **ratings_info}
+            original_rmp_name = list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(best_match)]
+
+            if original_ratings_name in unmatched_ratings_original:
+                unmatched_ratings_original.remove(original_ratings_name)
+
+            if original_rmp_name in unmatched_rmp:
+                unmatched_rmp.remove(original_rmp_name)
+
+    print(f"Unmatched Ratings: {len(unmatched_ratings_original)}")
     print(f"Unmatched RMP: {len(unmatched_rmp)}")
 
     # Save unmatched names to JSON files
     with open("unmatched_ratings.json", "w", encoding="utf-8") as f:
-        json.dump(unmatched_ratings, f, indent=4, ensure_ascii=False)
+        json.dump(unmatched_ratings_original, f, indent=4, ensure_ascii=False)
 
     with open("unmatched_rmp.json", "w", encoding="utf-8") as f:
         json.dump(unmatched_rmp, f, indent=4, ensure_ascii=False)
 
-    return matched_data
+    match_professor_names.unmatched_ratings_original = unmatched_ratings_original
 
+    return matched_data
 
 def main():
     # commented out for testing the matching function, just pulls the previously saved json data from the file rather than recalculating every time
     
-    ratings = calculate_professor_ratings() # get the ratings
-    save_without_grades(ratings) # example output with just aggregate data
+    # ratings = calculate_professor_ratings() # get the ratings
+    # save_without_grades(ratings) # example output with just aggregate data
 
-    print("Scraping professor data from RateMyProfessors...")
-    scrape_rmp_data(university_id="1273")
+    # print("Scraping professor data from RateMyProfessors...")
+    # scrape_rmp_data(university_id="1273")
 
     # match the data from the two sources
     # currently pre-loading the data for testing, comment this section and uncomment the calculation/scraping above to recompute
     # Load pre-scraped ratings data
+
+    ####### Minimal Test Case
+    # ratings_test = {
+    #     "Sanchez De La Rosa, Andres Ricardo": {},
+    #     "Busso Recabarren, Carlos": {},
+    #     "Smith, John": {},
+    #     "John Smith": {},
+    #     "O'Malley, Patrick": {},
+    #     "DeVries, Anna": {},
+    #     "Brown-Pearn, Spencer": {},
+    #     "Van Der Meer, Peter": {},
+    #     "McGregor, Connor": {},
+    #     "St. John, David": {}
+    # }
+
+    # rmp_test = {
+    #     "andres sanchez": {},
+    #     "carlos busso": {},
+    #     "john smith": {},
+    #     "john smith": {},  # Duplicate
+    #     "patrick omalley": {},
+    #     "anna devries": {},
+    #     "spencer brown pearn": {},
+    #     "peter van der meer": {},
+    #     "connor mcgregor": {},
+    #     "david st john": {}
+    # }
+
+    # matched_data = match_professor_names(ratings_test, rmp_test)
+
+    # print("Minimal Test Case:")
+    # print(json.dumps(matched_data, indent=4))
+
+    # # Print unmatched ratings
+    # print("\nUnmatched Ratings:")
+    # print(json.dumps(match_professor_names.unmatched_ratings_original, indent=4))
+
+
+    ###################### Full Test Case
+    
     print("Loading professor ratings data...")
     with open("grade_ratings.json", "r", encoding="utf-8") as file:
         ratings = json.load(file)
@@ -396,6 +449,7 @@ def main():
         json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
     print(f"Matched professor data saved to {output_filename}")
+
 
 
 if __name__ == "__main__":
