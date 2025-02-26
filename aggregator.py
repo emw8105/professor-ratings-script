@@ -4,15 +4,22 @@ import csv
 import os
 import re
 
-# names are stored as Last, First but there are some minor inconsistencies in the data, this function helps to normalize the names
-def normalize_instructor_name(name):
-    """Normalize instructor names by removing middle initials, extra spaces, and punctuation."""
+# separate normalization function for handling the comparison between the two datasets
+def normalize_name(name):
+    """Normalizes names, removes periods, handles middle names, replaces hyphens, and potential swaps."""
     name = name.strip()
-    name = re.sub(r"\s*,\s*", ", ", name)  # standardize comma spacing
+    name = re.sub(r"\s*,\s*", ", ", name) # standardize comma spacing
     name = re.sub(r"\s+[A-Z](\.[A-Z])*\s*$", "", name) # remove middle initials
     name = re.sub(r"([A-Z])\.([A-Z])", r"\1 \2", name) # add space between initials
     name = re.sub(r"[.\s]+", " ", name) # removes periods and extra spaces
-    return name.strip()
+    name = re.sub(r'\.', '', name)
+    name = name.replace('-', ' ')
+
+    if ", " in name: # handle the Last, First formats by splitting up and swapping
+        last, first = name.split(", ", 1)
+        return f"{first.strip().lower()} {last.strip().lower()}"
+    else:
+        return name.strip().lower()
 
 def calculate_professor_ratings(data_dir="data", output_filename="grade_ratings.json"):
     """
@@ -33,7 +40,7 @@ def calculate_professor_ratings(data_dir="data", output_filename="grade_ratings.
             with open(filepath, "r", encoding="utf-8-sig") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
-                    instructor = normalize_instructor_name(row.get("Instructor 1", "")) # instructor 1 is the only instructor that matters for these purposes
+                    instructor = normalize_name(row.get("Instructor 1", "")) # instructor 1 is the only instructor that matters for these purposes
 
                     subject = row.get("Subject", "").strip() # i.e. CS
                     catalog_nbr = row.get('"Catalog Nbr"') or row.get("Catalog Nbr", "") # i.e. 3345, there's quotes around the column name for some reason

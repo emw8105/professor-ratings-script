@@ -4,24 +4,7 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
 from scraper import scrape_rmp_data
-from aggregator import calculate_professor_ratings
-
-# separate normalization function for handling the comparison between the two datasets
-def normalize_name(name):
-    """Normalizes names, removes periods, handles middle names, replaces hyphens, and potential swaps."""
-    name = " ".join(name.split())
-    name = re.sub(r'\.', '', name)
-    name = name.replace('-', ' ')
-    
-    if ", " in name: # handle the Last, First formats by splitting up and swapping
-        last, first = name.split(", ", 1)
-        return f"{first.strip().lower()} {last.strip().lower()}"
-    else:
-        parts = name.split()
-        if len(parts) > 2:
-            return f"{parts[0].strip().lower()} {parts[-1].strip().lower()}"
-        else:
-            return name.strip().lower()
+from aggregator import calculate_professor_ratings, normalize_name
 
 
 def generate_name_variations(name):
@@ -129,58 +112,12 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 
 def main():
     
-    # data retrieval, can be commented out and have the data loaded from the JSON files
+    #### data retrieval, can be commented out and have the data loaded from the JSON files
     print("Calculating professor ratings...")
     ratings = calculate_professor_ratings() # get the ratings data
 
     print("Scraping professor data from RateMyProfessors...")
     scrape_rmp_data(university_id="1273")
-
-
-
-    ######### minimal test case, can be uncommented to test the function
-
-    # ratings_test = {
-    #     "Sanchez De La Rosa, Andres Ricardo": {},
-    #     "Busso Recabarren, Carlos": {},
-    #     "Smith, John": {},
-    #     "John Smith": {},
-    #     "O'Malley, Patrick": {},
-    #     "DeVries, Anna": {},
-    #     "Brown-Pearn, Spencer": {},
-    #     "Van Der Meer, Peter": {},
-    #     "McGregor, Connor": {},
-    #     "St. John, David": {},
-    #     "Ewert-Pittman, Anna": {},
-    #     "Du, Ding": {},
-    #     "Thamban, P L Stephan": {},
-    # }
-
-    # rmp_test = {
-    #     "andres sanchez": {},
-    #     "carlos busso": {},
-    #     "john smith": {},
-    #     "john smith": {},  # Duplicate
-    #     "patrick omalley": {},
-    #     "anna devries": {},
-    #     "spencer brown pearn": {},
-    #     "peter van der meer": {},
-    #     "connor mcgregor": {},
-    #     "david st john": {},
-    #     "anna pittman": {},
-    #     "Ding-Zhu Du": {},
-    #     "P.L. Stephan Thamban": {},
-    # }
-
-    # matched_data = match_professor_names(ratings_test, rmp_test)
-
-    # print("Minimal Test Case:")
-    # print(json.dumps(matched_data, indent=4))
-
-    # # Print unmatched ratings
-    # print("\nUnmatched Ratings:")
-    # print(json.dumps(match_professor_names.unmatched_ratings_original, indent=4))
-
 
 
     ########## Full test case, test the function with the actual data
@@ -204,6 +141,53 @@ def main():
         json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
     print(f"Matched professor data saved to {output_filename}")
+
+
+    ######### minimal test case, can be uncommented to test the function
+
+    # ratings_test = {
+    #     "Sanchez De La Rosa, Andres Ricardo": {},
+    #     "Busso Recabarren, Carlos": {},
+    #     "Smith, John": {},
+    #     "John Smith": {},
+    #     "O'Malley, Patrick": {},
+    #     "DeVries, Anna": {},
+    #     "Brown-Pearn, Spencer": {},
+    #     "Van Der Meer, Peter": {},
+    #     "McGregor, Connor": {},
+    #     "St. John, David": {},
+    #     "Ewert-Pittman, Anna": {},
+    #     "Du, Ding": {},
+    #     "Thamban, P L Stephan": {},
+    #     "von Drathen, Christian": {},
+    # }
+
+    # rmp_test = {
+    #     "andres sanchez": {},
+    #     "carlos busso": {},
+    #     "john smith": {},
+    #     "john smith": {},  # Duplicate
+    #     "patrick omalley": {},
+    #     "anna devries": {},
+    #     "spencer brown pearn": {},
+    #     "peter van der meer": {},
+    #     "connor mcgregor": {},
+    #     "david st john": {},
+    #     "anna pittman": {},
+    #     "Ding-Zhu Du": {},
+    #     "P.L. Stephan Thamban": {},
+    #     "christian von drathen": {},
+    # }
+
+    # matched_data = match_professor_names(ratings_test, rmp_test)
+
+    # print("Minimal Test Case:")
+    # print(json.dumps(matched_data, indent=4))
+
+    # # Print unmatched ratings
+    # print("\nUnmatched Ratings:")
+    # print(json.dumps(match_professor_names.unmatched_ratings_original, indent=4))
+
 
 
 
