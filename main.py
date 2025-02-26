@@ -4,7 +4,7 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
 from scraper import scrape_rmp_data
-from aggregator import calculate_professor_ratings, save_without_grades
+from aggregator import calculate_professor_ratings
 
 # separate normalization function for handling the comparison between the two datasets
 def normalize_name(name):
@@ -123,15 +123,15 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     with open("unmatched_rmp.json", "w", encoding="utf-8") as f:
         json.dump(unmatched_rmp, f, indent=4, ensure_ascii=False)
 
-    match_professor_names.unmatched_ratings_original = unmatched_ratings_original
+    match_professor_names.unmatched_ratings_original = unmatched_ratings_original # debugging stuff
 
     return matched_data
 
 def main():
     
     # data retrieval, can be commented out and have the data loaded from the JSON files
-    ratings = calculate_professor_ratings() # get the ratings
-    save_without_grades(ratings) # example output with just aggregate data
+    print("Calculating professor ratings...")
+    ratings = calculate_professor_ratings() # get the ratings data
 
     print("Scraping professor data from RateMyProfessors...")
     scrape_rmp_data(university_id="1273")

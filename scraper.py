@@ -42,7 +42,7 @@ def click_show_more(driver):
             )
             driver.execute_script("arguments[0].click();", show_more_button)
             numClicks += 1
-            print(f"Clicked 'Show More' button {numClicks} times.")
+            # print(f"Clicked 'Show More' button {numClicks} times.")
             time.sleep(0.25)
         except Exception as e:
             print("No more 'Show More' button found. Exiting loop.")
