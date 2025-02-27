@@ -4,6 +4,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+import aiohttp
+import asyncio
+import re
 import time
 import json
 import datetime
@@ -32,7 +35,7 @@ def close_cookie_popup(driver):
 
 def click_show_more(driver):
     """Clicks the 'Show More' button until all professors are loaded."""
-    print("Beginning execution, attempting to click 'Show More' button...")
+    print("Beginning execution, clicking 'Show More' button...")
     start_time = time.time()
     numClicks = 0
     while True:
@@ -45,7 +48,7 @@ def click_show_more(driver):
             # print(f"Clicked 'Show More' button {numClicks} times.")
             time.sleep(0.25)
         except Exception as e:
-            print("No more 'Show More' button found. Exiting loop.")
+            print("No more 'Show More' button found, all professors rendered. Exiting loop.")
             break
     end_time = time.time()
     print(f"Execution complete. Clicked 'Show More' {numClicks} times in {end_time - start_time:.2f} seconds.")
@@ -60,6 +63,10 @@ def wait_for_professor_cards(driver):
         print("Professor cards loaded.")
     except Exception as e:
         print("Professor cards did not load in time:", e)
+
+def normalize_course_name(course_name):
+    """Normalizes a course name to uppercase and removes spaces."""
+    return re.sub(r'\s+', '', course_name).upper()
 
 def extract_professor_data(page_source):
     """Extracts and normalizes professor data from the page source."""
@@ -115,6 +122,52 @@ def extract_professor_data(page_source):
         print(f"Error extracting professor data: {e}")
         return {}
 
+async def fetch_professor_data_async(session, url):
+    """Fetches and parses a professor's reviews and tags from RMP."""
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            html = await response.text()
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # store courses and tags as sets to avoid duplicates but convert to lists for JSON serialization
+            course_tags = soup.find_all("div", class_="RatingHeader__StyledClass-sc-1dlkqw1-3")
+            courses = {normalize_course_name(tag.text.strip()) for tag in course_tags} # only 20 ratings displayed on the page but we can hope, also normalize the course names
+
+            tag_tags = soup.find_all("span", class_="Tag-bs9vf4-0")
+            tags = {tag.text.strip() for tag in tag_tags}
+
+            return {"courses": list(courses), "tags": list(tags)[:5]}
+
+    except aiohttp.ClientError as e:
+        print(f"Error fetching {url}: {e}")
+        return {"courses": [], "tags": []}
+    except Exception as e:
+        print(f"Error parsing {url}: {e}")
+        return {"courses": [], "tags": []}
+
+async def scrape_professor_courses_async(professor_data):
+    """Scrapes course reviews and tags for all professors in the provided data."""
+    urls = [prof_data["url"] for prof_data in professor_data.values() if "url" in prof_data]
+
+    start_time = time.time()
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_professor_data_async(session, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+    for i, data in enumerate(results):
+        professor_name = list(professor_data.keys())[i]
+        if professor_name in professor_data:
+            professor_data[professor_name]["courses"] = data["courses"]
+            professor_data[professor_name]["tags"] = data["tags"]
+
+    end_time = time.time()
+    print(f"Scraped course data and tags for {len(professor_data)} professors in {end_time - start_time:.2f} seconds.")
+
+    return professor_data
+
+
 def scrape_rmp_data(university_id):
     """Scrapes professor data from RateMyProfessors."""
     url = f"https://www.ratemyprofessors.com/search/professors/{university_id}?q=*"
@@ -135,6 +188,9 @@ def scrape_rmp_data(university_id):
     professor_data = extract_professor_data(page_source)
 
     if professor_data:
+        print("Scraping course data and tags from professor pages...")
+        professor_data = asyncio.run(scrape_professor_courses_async(professor_data))
+
         with open("rmp_ratings.json", "w", encoding="utf-8") as f:
             json.dump(professor_data, f, indent=4, ensure_ascii=False)
         print("Data extraction and file writing complete.")

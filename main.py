@@ -1,9 +1,8 @@
 import json
-import re
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 import argparse
-
+import time
 from scraper import scrape_rmp_data
 from aggregator import calculate_professor_ratings, normalize_name
 
@@ -56,6 +55,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
             if list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)] in unmatched_rmp:
                 unmatched_rmp.remove(list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)])
             direct_match_count += 1
+
     print(f"Direct Matches: {direct_match_count}")
 
     # fuzzy matching, iterate over the remaining unmatched ratings' name variations and rmp names to find fuzzy matches
@@ -63,8 +63,6 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     normalized_remaining_ratings = {normalize_name(name): (name, data) for name, data in remaining_ratings.items()} # create normalized remaining ratings
 
     print(f"Remaining Ratings to Fuzzy Match: {len(normalized_remaining_ratings)}, now matching...")
-
-    # fuzzy_matches = [] # TEMP TO CHECK MATCHES
 
     for ratings_norm, (original_ratings_name, ratings_info) in normalized_remaining_ratings.items():
         if original_ratings_name not in unmatched_ratings_original:
@@ -79,14 +77,6 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
             for ratings_variation in generate_name_variations(ratings_norm):
                 for rmp_variation in generate_name_variations(rmp_norm):
                     score = fuzz.ratio(ratings_variation, rmp_variation)
-
-                    # fuzzy_matches.append({ # TEMP TEMP TEMP
-                    #     "ratings_name": original_ratings_name,
-                    #     "rmp_name": list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)],
-                    #     "ratings_variation": ratings_variation,
-                    #     "rmp_variation": rmp_variation,
-                    #     "score": score
-                    # })
 
                     if score > best_score and score >= fuzzy_threshold:
                         best_score = score
@@ -105,12 +95,6 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     print(f"Unmatched Ratings: {len(unmatched_ratings_original)}")
     print(f"Unmatched RMP: {len(unmatched_rmp)}")
 
-    # fuzzy_matches.sort(key=lambda x: x["score"], reverse=True) # TEMP TEMP TEMP
-
-    # # save fuzzy matches to JSON file
-    # with open("temp_fuzzy_matches_testing.json", "w", encoding="utf-8") as f:
-    #     json.dump(fuzzy_matches, f, indent=4, ensure_ascii=False)
-
     # save unmatched names to JSON files for checking which names didn't match
     with open("unmatched_ratings.json", "w", encoding="utf-8") as f:
         json.dump(unmatched_ratings_original, f, indent=4, ensure_ascii=False)
@@ -126,6 +110,7 @@ def main():
     parser = argparse.ArgumentParser(description="Professor Data Matching Script")
     parser.add_argument("mode", nargs="?", default="normal", choices=["normal", "scrape", "test"], help="Execution mode: normal, scrape, or test")
     args = parser.parse_args()
+    total_start_time = time.time()
 
     if args.mode == "scrape": # scrape RMP data and recalculates professor ratings before running the resulting data
         print("Calculating professor ratings...")
@@ -211,6 +196,9 @@ def main():
             json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
         print(f"Matched professor data saved to {output_filename}")
+
+    total_end_time = time.time()
+    print(f"Total execution complete in {total_end_time - total_start_time:.2f} seconds.")
 
 
 if __name__ == "__main__":
