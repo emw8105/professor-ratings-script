@@ -2,6 +2,7 @@ import json
 import re
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+import argparse
 
 from scraper import scrape_rmp_data
 from aggregator import calculate_professor_ratings, normalize_name
@@ -122,85 +123,94 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     return matched_data
 
 def main():
-    
-    #### data retrieval, can be commented out and have the data loaded from the JSON files
-    # print("Calculating professor ratings...")
-    # ratings = calculate_professor_ratings() # get the ratings data
+    parser = argparse.ArgumentParser(description="Professor Data Matching Script")
+    parser.add_argument("mode", nargs="?", default="normal", choices=["normal", "scrape", "test"], help="Execution mode: normal, scrape, or test")
+    args = parser.parse_args()
 
-    # print("Scraping professor data from RateMyProfessors...")
-    # scrape_rmp_data(university_id="1273")
+    if args.mode == "scrape": # scrape RMP data and recalculates professor ratings before running the resulting data
+        print("Calculating professor ratings...")
+        ratings = calculate_professor_ratings()
 
+        print("Scraping professor data from RateMyProfessors...")
+        scrape_rmp_data(university_id="1273")
 
-    ########## Full test case, test the function with the actual data
+        print("Loading professor ratings data...")
+        with open("grade_ratings.json", "r", encoding="utf-8") as file:
+            ratings = json.load(file)
 
-    # # load pre-aggregated professor ratings data
-    # print("Loading professor ratings data...")
-    # with open("grade_ratings.json", "r", encoding="utf-8") as file:
-    #     ratings = json.load(file)
+        print("Loading RateMyProfessors data...")
+        with open("rmp_ratings.json", "r", encoding="utf-8") as file:
+            rmp_data = json.load(file)
 
-    # # load pre-scraped RMP data
-    # print("Loading RateMyProfessors data...")
-    # with open("rmp_ratings.json", "r", encoding="utf-8") as file:
-    #     rmp_data = json.load(file)
+        print("Matching professor data from both sources...")
+        matched_data = match_professor_names(ratings, rmp_data)
 
-    # print("Matching professor data from both sources...")
-    # matched_data = match_professor_names(ratings, rmp_data) # we need to implement this
+        output_filename = "matched_professor_data.json"
+        with open(output_filename, "w", encoding="utf-8") as outfile:
+            json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
-    # # save the matched data to a JSON file
-    # output_filename = "matched_professor_data.json"
-    # with open(output_filename, "w", encoding="utf-8") as outfile:
-    #     json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
+        print(f"Matched professor data saved to {output_filename}")
 
-    # print(f"Matched professor data saved to {output_filename}")
+    elif args.mode == "test": # minimal test case
+        ratings_test = {
+            "Sanchez De La Rosa, Andres Ricardo": {},
+            "Busso Recabarren, Carlos": {},
+            "Smith, John": {},
+            "John Smith": {},
+            "O'Malley, Patrick": {},
+            "DeVries, Anna": {},
+            "Brown-Pearn, Spencer": {},
+            "Van Der Meer, Peter": {},
+            "McGregor, Connor": {},
+            "St. John, David": {},
+            "Ewert-Pittman, Anna": {},
+            "Du, Ding": {},
+            "Thamban, P L Stephan": {},
+            "von Drathen, Christian": {},
+        }
 
+        rmp_test = {
+            "andres sanchez": {},
+            "carlos busso": {},
+            "john smith": {},
+            "john smith": {},
+            "patrick omalley": {},
+            "anna devries": {},
+            "spencer brown pearn": {},
+            "peter van der meer": {},
+            "connor mcgregor": {},
+            "david st john": {},
+            "anna pittman": {},
+            "Ding-Zhu Du": {},
+            "P.L. Stephan Thamban": {},
+            "christian von drathen": {},
+        }
 
-    ######### minimal test case, can be uncommented to test the function
-    # # some of these are generated, some are real examples from the data
+        matched_data = match_professor_names(ratings_test, rmp_test)
 
-    ratings_test = {
-        "Sanchez De La Rosa, Andres Ricardo": {},
-        "Busso Recabarren, Carlos": {},
-        "Smith, John": {},
-        "John Smith": {},
-        "O'Malley, Patrick": {},
-        "DeVries, Anna": {},
-        "Brown-Pearn, Spencer": {},
-        "Van Der Meer, Peter": {},
-        "McGregor, Connor": {},
-        "St. John, David": {},
-        "Ewert-Pittman, Anna": {},
-        "Du, Ding": {},
-        "Thamban, P L Stephan": {},
-        "von Drathen, Christian": {},
-    }
+        print("Minimal Test Case:")
+        print(json.dumps(matched_data, indent=4))
 
-    rmp_test = {
-        "andres sanchez": {},
-        "carlos busso": {},
-        "john smith": {},
-        "john smith": {},  # Duplicate
-        "patrick omalley": {},
-        "anna devries": {},
-        "spencer brown pearn": {},
-        "peter van der meer": {},
-        "connor mcgregor": {},
-        "david st john": {},
-        "anna pittman": {},
-        "Ding-Zhu Du": {},
-        "P.L. Stephan Thamban": {},
-        "christian von drathen": {},
-    }
+        print("\nUnmatched Ratings:")
+        print(json.dumps(match_professor_names.unmatched_ratings_original, indent=4))
 
-    matched_data = match_professor_names(ratings_test, rmp_test)
+    else:  # normal execution mode that uses the full pre-scraped data
+        print("Loading professor ratings data...")
+        with open("grade_ratings.json", "r", encoding="utf-8") as file:
+            ratings = json.load(file)
 
-    print("Minimal Test Case:")
-    print(json.dumps(matched_data, indent=4))
+        print("Loading RateMyProfessors data...")
+        with open("rmp_ratings.json", "r", encoding="utf-8") as file:
+            rmp_data = json.load(file)
 
-    # Print unmatched ratings
-    print("\nUnmatched Ratings:")
-    print(json.dumps(match_professor_names.unmatched_ratings_original, indent=4))
+        print("Matching professor data from both sources...")
+        matched_data = match_professor_names(ratings, rmp_data)
 
+        output_filename = "matched_professor_data.json"
+        with open(output_filename, "w", encoding="utf-8") as outfile:
+            json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
+        print(f"Matched professor data saved to {output_filename}")
 
 
 if __name__ == "__main__":
