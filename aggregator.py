@@ -4,7 +4,7 @@ import csv
 import os
 import re
 
-# separate normalization function for handling the comparison between the two datasets
+# handles comparison between the two datasets as well as helping to normalize names within the grades dataset (i.e. both John Cole and John P Cole)
 def normalize_name(name):
     """Normalizes names, removes periods, handles middle names, replaces hyphens, and potential swaps."""
     name = name.strip()

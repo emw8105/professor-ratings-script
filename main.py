@@ -165,7 +165,7 @@ def main():
             "St. John, David": {},
             "Ewert-Pittman, Anna": {},
             "Du, Ding": {},
-            "Thamban, P L Stephan": {},
+            "Thamban, P.L.Stephan": {},
             "von Drathen, Christian": {},
         }
 

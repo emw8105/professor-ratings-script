@@ -80,6 +80,7 @@ def extract_professor_data(page_source):
             department_tag = prof.find("div", class_="CardSchool__Department-sc-19lmz2k-0")
             would_take_again_tag = prof.find("div", class_="CardFeedback__CardFeedbackNumber-lq6nix-2")
             difficulty_tag = prof.find_all("div", class_="CardFeedback__CardFeedbackNumber-lq6nix-2")
+            ratings_count_tag = prof.find("div", class_="CardNumRating__CardNumRatingCount-sc-17t4b9u-3") # Get the ratings count tag
 
             name = name_tag.text.strip() if name_tag else "Unknown"
             department = department_tag.text.strip() if department_tag else "Unknown"
@@ -90,11 +91,13 @@ def extract_professor_data(page_source):
             would_take_again = float(would_take_again_text) if would_take_again_text != "N/A" else "N/A"
             difficulty_text = difficulty_tag[1].text.strip() if difficulty_tag and len(difficulty_tag) > 1 else "N/A"
             difficulty = float(difficulty_text) if difficulty_text != "N/A" else "N/A"
+            ratings_count_text = ratings_count_tag.text.strip().replace(" ratings", "") if ratings_count_tag else "N/A"
+            ratings_count = int(ratings_count_text) if ratings_count_text != "N/A" else "N/A"
 
             prof_url = "https://www.ratemyprofessors.com" + prof['href']
             prof_id = prof['href'].split('/')[-1]
 
-            normalized_name = " ".join(name.lower().split()) # used to help with matching to the grades data
+            normalized_name = " ".join(name.lower().split())
 
             professor_data[normalized_name] = {
                 "id": prof_id,
@@ -103,8 +106,9 @@ def extract_professor_data(page_source):
                 "quality_rating": rating,
                 "difficulty_rating": difficulty,
                 "would_take_again": would_take_again,
-                "original_format": name, # original format can be used for reference in case the normalized name butchers the original
-                "last_updated": datetime.datetime.now().isoformat()
+                "original_format": name,
+                "last_updated": datetime.datetime.now().isoformat(),
+                "ratings_count": ratings_count
             }
         return professor_data
     except Exception as e:
