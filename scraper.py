@@ -65,8 +65,8 @@ def wait_for_professor_cards(driver):
         print("Professor cards did not load in time:", e)
 
 def normalize_course_name(course_name):
-    """Normalizes a course name to uppercase and removes spaces."""
-    return re.sub(r'\s+', '', course_name).upper()
+    """Normalizes a course name to uppercase and removes spaces and hyphens."""
+    return re.sub(r'[-_\s]+', '', course_name).upper()
 
 def extract_professor_data(page_source):
     """Extracts and normalizes professor data from the page source."""
