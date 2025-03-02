@@ -11,6 +11,7 @@ import time
 import json
 import datetime
 
+
 def setup_driver(headless=True):
     """Sets up and returns a Selenium WebDriver."""
     chrome_options = Options()
@@ -71,6 +72,7 @@ def normalize_course_name(course_name):
 def extract_professor_data(page_source):
     """Extracts and normalizes professor data from the page source."""
     try:
+        # duplicate_prof_count = 0
         print("Parsing data...")
         soup = BeautifulSoup(page_source, "html.parser")
         professors = soup.find_all("a", class_="TeacherCard__StyledTeacherCard-syjs0d-0")
@@ -105,6 +107,10 @@ def extract_professor_data(page_source):
             prof_id = prof['href'].split('/')[-1]
 
             normalized_name = " ".join(name.lower().split())
+
+            # if(normalized_name in professor_data):
+            #     duplicate_prof_count+=1
+            #     print(f"Duplicate professor found: {normalized_name}, counter = {duplicate_prof_count}")
 
             professor_data[normalized_name] = {
                 "id": prof_id,
