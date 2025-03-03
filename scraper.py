@@ -197,7 +197,7 @@ def scrape_rmp_data(university_id):
         print("Scraping course data and tags from professor pages...")
         professor_data = asyncio.run(scrape_professor_courses_async(professor_data))
 
-        with open("rmp_ratings.json", "w", encoding="utf-8") as f:
+        with open("ratings/rmp_ratings.json", "w", encoding="utf-8") as f:
             json.dump(professor_data, f, indent=4, ensure_ascii=False)
         print("Data extraction and file writing complete.")
     else:

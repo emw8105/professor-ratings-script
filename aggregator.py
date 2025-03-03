@@ -21,7 +21,7 @@ def normalize_name(name):
     else:
         return name.strip().lower()
 
-def calculate_professor_ratings(data_dir="data", output_filename="grade_ratings.json"):
+def calculate_professor_ratings(data_dir="data/grades", output_filename="ratings/grade_ratings.json"):
     """
     Calculates professor ratings based on grade distributions from CSV files
     in the specified directory and saves the results (without grade totals) to a JSON file.
