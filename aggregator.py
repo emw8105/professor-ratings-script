@@ -89,7 +89,7 @@ def calculate_professor_ratings(grades_data_dir="data/grades", section_data_dir=
             if filename.endswith(".csv"):
                 filepath = os.path.join(grades_data_dir, filename)
                 with open(filepath, "r", encoding="utf-8-sig") as csvfile:
-                    print(f"Processing {filename}...")
+                    # print(f"Processing {filename}...")
                     reader = csv.DictReader(csvfile)
                     for row in reader:
                         instructor = normalize_name(row.get("Instructor 1", ""))

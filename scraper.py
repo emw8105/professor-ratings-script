@@ -179,7 +179,7 @@ def query_rmp(headers, school_id):
         }
     }
 
-    all_professors = []
+    all_professors = {}
     more = True
     while more:
         more = False
@@ -194,32 +194,37 @@ def query_rmp(headers, school_id):
             for d in data:
                 dn = d['node']
 
-                # sort tags to extract the top 5
                 tags = []
                 if dn['teacherRatingTags']:
                     sorted_tags = sorted(dn['teacherRatingTags'], key=lambda x: x['tagCount'], reverse=True)
-                    tags = [{'tagName': tag['tagName'], 'tagCount': tag['tagCount']} for tag in sorted_tags[:5]]
+                    tags = [tag['tagName'] for tag in sorted_tags[:5]]
 
-                # extract course names
-                courses = [course['courseName'] for course in dn['courseCodes']]
+                courses = [normalize_course_name(course['courseName']) for course in dn['courseCodes']]
+                courses = list(set(courses))
 
-                # create the profile link using the legacy id
                 profile_link = f"https://www.ratemyprofessors.com/professor/{dn['legacyId']}" if dn['legacyId'] else None
 
-                all_professors.append({
-                    'firstName': dn['firstName'],
-                    'lastName': dn['lastName'],
+                professor_data = {
                     'department': dn['department'],
-                    'numRatings': dn['numRatings'],
-                    'avgDifficulty': dn['avgDifficulty'],
-                    'avgRating': dn['avgRating'],
-                    'wouldTakeAgainPercent': dn['wouldTakeAgainPercent'],
-                    'id': dn['id'],
-                    'legacyId': dn['legacyId'],
-                    'profileLink': profile_link,
+                    'url': profile_link,
+                    'quality_rating': dn['avgRating'],
+                    'difficulty_rating': dn['avgDifficulty'],
+                    'would_take_again': round(dn['wouldTakeAgainPercent']),
+                    'original_format': f"{dn['firstName']} {dn['lastName']}",
+                    'last_updated': datetime.datetime.now().isoformat(),
+                    'ratings_count': dn['numRatings'],
+                    'courses': courses,
                     'tags': tags,
-                    'courses': courses
-                })
+                    'id': str(dn['legacyId'])
+                }
+
+                key = f"{dn['firstName'].lower()} {dn['lastName'].lower()}"
+                if key in all_professors:
+                    all_professors[key].append(professor_data)
+                    print(f"Duplicate professor name found: {key}")
+                else:
+                    all_professors[key] = [professor_data]
+
             if len(data) == 1000:
                 req_data['variables']['cursor'] = data[len(data) - 1]['cursor']
                 more = True
@@ -239,23 +244,39 @@ def normalize_course_name(course_name):
 
 def scrape_rmp_data(university_id):
     """Scrapes professor data from RateMyProfessors."""
+    start_time = time.time()  # Start time tracking
+
     driver = setup_driver()
+    setup_driver_time = time.time()
+    print(f"Driver setup time: {setup_driver_time - start_time:.2f} seconds")
+
     headers, school_id = get_headers(driver, university_id)
+    get_headers_time = time.time()
+    print(f"Get headers time: {get_headers_time - setup_driver_time:.2f} seconds")
+
     driver.quit()
 
     if headers and school_id:
         professor_data = query_rmp(headers, school_id)
+        query_rmp_time = time.time()
+        print(f"Query RMP time: {query_rmp_time - get_headers_time:.2f} seconds")
 
         if professor_data:
             with open("ratings/rmp_ratings.json", "w", encoding="utf-8") as f:
                 json.dump(professor_data, f, indent=4, ensure_ascii=False)
             print("Data extraction and file writing complete.")
+            end_time = time.time()
+            print(f"Total execution time: {end_time - start_time:.2f} seconds")
             return professor_data
         else:
             print("Data extraction failed. GraphQL API returned no data.")
+            end_time = time.time()
+            print(f"Total execution time: {end_time - start_time:.2f} seconds")
             return None
     else:
         print("Failed to retrieve headers or school ID. Data extraction aborted.")
+        end_time = time.time()
+        print(f"Total execution time: {end_time - start_time:.2f} seconds")
         return None
 
 
