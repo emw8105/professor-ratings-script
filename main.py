@@ -63,30 +63,31 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
         if rmp_norm in normalized_ratings:
             original_ratings_name, ratings_list = normalized_ratings[rmp_norm]
 
-            ratings_info = ratings_list[0] #take the first element of the list.
-
             best_rmp_match = None
+            best_ratings_match = None
             best_rmp_score = 0
 
-            for rmp_info in rmp_list:
-                rmp_courses = set(rmp_info.get("courses", []))
-                ratings_courses = set(ratings_info.get("course_ratings", {}).keys())
+            for ratings_info in ratings_list: # iterate through each grade rating profile
+                for rmp_info in rmp_list:
+                    rmp_courses = set(rmp_info.get("courses", []))
+                    ratings_courses = set(ratings_info.get("course_ratings", {}).keys())
 
-                rmp_headers = {extract_course_department(course) for course in rmp_courses if extract_course_department(course)}
-                ratings_headers = {extract_course_department(course) for course in ratings_courses if extract_course_department(course)}
+                    rmp_headers = {extract_course_department(course) for course in rmp_courses if extract_course_department(course)}
+                    ratings_headers = {extract_course_department(course) for course in ratings_courses if extract_course_department(course)}
 
-                rmp_numbers = {re.sub(r'[^\d]', '', course) for course in rmp_courses}
-                ratings_numbers = {re.sub(r'[^\d]', '', course) for course in ratings_courses}
+                    rmp_numbers = {re.sub(r'[^\d]', '', course) for course in rmp_courses}
+                    ratings_numbers = {re.sub(r'[^\d]', '', course) for course in ratings_courses}
 
-                if rmp_courses.intersection(ratings_courses) or rmp_headers.intersection(ratings_headers) or rmp_numbers.intersection(ratings_numbers):
-                    score = rmp_info.get("ratings_count", 0)
-                    if score > best_rmp_score:
-                        best_rmp_score = score
-                        best_rmp_match = rmp_info
+                    if rmp_courses.intersection(ratings_courses) or rmp_headers.intersection(ratings_headers) or rmp_numbers.intersection(ratings_numbers):
+                        score = rmp_info.get("ratings_count", 0)
+                        if score > best_rmp_score:
+                            best_rmp_score = score
+                            best_rmp_match = rmp_info
+                            best_ratings_match = ratings_info # track the grade rating profile that matched.
 
             if best_rmp_match:
                 rmp_info_cleaned = {k: v for k, v in best_rmp_match.items() if k not in ["courses"]}
-                matched_data[original_ratings_name] = {**rmp_info_cleaned, **ratings_info}
+                matched_data[original_ratings_name] = {**rmp_info_cleaned, **best_ratings_match} # use the grade rating profile that matched.
                 matched_direct.append(original_ratings_name)
                 if original_ratings_name in unmatched_ratings_original:
                     unmatched_ratings_original.remove(original_ratings_name)
