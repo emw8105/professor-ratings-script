@@ -18,9 +18,10 @@ def setup_driver(headless=True):
         chrome_options = Options()
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--ignore-certificate-errors")
-        if headless:
-            chrome_options.add_argument("--headless")
+        # if headless:
+            # chrome_options.add_argument("--headless")
         driver = webdriver.Chrome(options=chrome_options)
+        driver.set_page_load_timeout(2)
         return driver
     except Exception as e:
         print(f"Failed to start the Chrome driver: {e}")
