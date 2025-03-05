@@ -158,6 +158,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 
     print(f"Unmatched Ratings: {len(unmatched_ratings_original)}")
     print(f"Unmatched RMP: {len(unmatched_rmp)}")
+    print(f"Matched Professors: {len(matched_data)}")
 
     # Save unmatched names to JSON files
     with open("unmatched/unmatched_ratings.json", "w", encoding="utf-8") as f:
