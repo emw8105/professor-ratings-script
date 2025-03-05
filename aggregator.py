@@ -134,6 +134,8 @@ def calculate_professor_ratings(grades_data_dir="data/grades", section_data_dir=
 
         instructor_name = next((name for name, profs in professor_name_map.items() if any(prof['instructor_id'] == instructor_id for prof in profs)), None)
 
+        # it would be nice to have the original instructor name attached as a property, but we have to normalize it because the grades data is aggregated across
+        # multiple sections and the names are not always consistent (i.e. John Cole vs John P Cole)
         if instructor_name:
             if instructor_name not in filtered_data:
                 filtered_data[instructor_name] = []

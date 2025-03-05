@@ -210,12 +210,12 @@ def query_rmp(headers, school_id):
                     'quality_rating': dn['avgRating'],
                     'difficulty_rating': dn['avgDifficulty'],
                     'would_take_again': round(dn['wouldTakeAgainPercent']),
-                    'original_format': f"{dn['firstName']} {dn['lastName']}",
+                    'original_rmp_format': f"{dn['firstName']} {dn['lastName']}",
                     'last_updated': datetime.datetime.now().isoformat(),
                     'ratings_count': dn['numRatings'],
                     'courses': courses,
                     'tags': tags,
-                    'id': str(dn['legacyId'])
+                    'rmp_id': str(dn['legacyId'])
                 }
 
                 key = f"{dn['firstName'].lower()} {dn['lastName'].lower()}"
