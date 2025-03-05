@@ -218,7 +218,9 @@ def query_rmp(headers, school_id):
                     'rmp_id': str(dn['legacyId'])
                 }
 
-                key = f"{dn['firstName'].lower()} {dn['lastName'].lower()}"
+                professor_name = f"{dn['firstName']} {dn['lastName']}"
+                key = normalize_professor_name(professor_name)
+                
                 if key in all_professors:
                     all_professors[key].append(professor_data)
                     print(f"Duplicate professor name found: {key}")
@@ -240,6 +242,10 @@ def query_rmp(headers, school_id):
 def normalize_course_name(course_name):
     """Normalizes a course name to uppercase and removes spaces and hyphens."""
     return re.sub(r'[-_\s]+', '', course_name).upper()
+
+def normalize_professor_name(name):
+    """Normalizes professor names by removing extra spaces and converting to lowercase."""
+    return " ".join(name.lower().split())
 
 
 def scrape_rmp_data(university_id):
