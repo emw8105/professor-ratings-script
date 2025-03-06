@@ -165,6 +165,9 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 
     with open("unmatched/unmatched_ratings.json", "w", encoding="utf-8") as f:
         json.dump(unmatched_ratings_original, f, indent=4, ensure_ascii=False)
+    
+    with open("unmatched/unmatched_rmp.json", "w", encoding="utf-8") as f:
+        json.dump(unmatched_rmp, f, indent=4, ensure_ascii=False)
 
     return matched_data
 
