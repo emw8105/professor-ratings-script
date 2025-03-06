@@ -168,7 +168,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 
 def main():
     parser = argparse.ArgumentParser(description="Professor Data Matching Script")
-    parser.add_argument("mode", nargs="?", default="normal", choices=["normal", "scrape", "test"], help="Execution mode: normal, scrape, or test")
+    parser.add_argument("mode", nargs="?", default="normal", choices=["normal", "reload"], help="Execution mode: normal or reload")
     args = parser.parse_args()
     total_start_time = time.time()
 
@@ -177,13 +177,7 @@ def main():
     os.makedirs("matched", exist_ok=True)
 
 
-    if args.mode == "scrape": # scrape RMP data and recalculates professor ratings before running the resulting data
-        print("Calculating professor ratings...")
-        ratings = calculate_professor_ratings()
-
-        print("Scraping professor data from RateMyProfessors...")
-        scrape_rmp_data(university_id="1273")
-
+    if args.mode == "reload": # load existing data if it exists and matches it
         print("Loading professor ratings data...")
         with open("ratings/grade_ratings.json", "r", encoding="utf-8") as file:
             ratings = json.load(file)
@@ -200,57 +194,12 @@ def main():
 
         print(f"Matched professor data saved to matched/matched_professor_data.json")
 
-    elif args.mode == "test": # minimal test case
-        ratings_test = {
-            "Sanchez De La Rosa, Andres Ricardo": {},
-            "Busso Recabarren, Carlos": {},
-            "Smith, John": {},
-            "John Smith": {},
-            "O'Malley, Patrick": {},
-            "DeVries, Anna": {},
-            "Brown-Pearn, Spencer": {},
-            "Van Der Meer, Peter": {},
-            "McGregor, Connor": {},
-            "St. John, David": {},
-            "Ewert-Pittman, Anna": {},
-            "Du, Ding": {},
-            "Thamban, P.L.Stephan": {},
-            "von Drathen, Christian": {},
-        }
+    else: # scrape RMP data and recalculates professor ratings before running the resulting data
+        print("Calculating professor ratings...")
+        ratings = calculate_professor_ratings()
 
-        rmp_test = {
-            "andres sanchez": {},
-            "carlos busso": {},
-            "john smith": {},
-            "john smith": {},
-            "patrick omalley": {},
-            "anna devries": {},
-            "spencer brown pearn": {},
-            "peter van der meer": {},
-            "connor mcgregor": {},
-            "david st john": {},
-            "anna pittman": {},
-            "Ding-Zhu Du": {},
-            "P.L. Stephan Thamban": {},
-            "christian von drathen": {},
-        }
-
-        matched_data = match_professor_names(ratings_test, rmp_test)
-
-        print("Minimal Test Case:")
-        print(json.dumps(matched_data, indent=4))
-
-        print("\nUnmatched Ratings:")
-        print(json.dumps(match_professor_names.unmatched_ratings_original, indent=4))
-
-    else:  # normal execution mode that uses the full pre-scraped data
-        print("Loading professor ratings data...")
-        with open("ratings/grade_ratings.json", "r", encoding="utf-8") as file:
-            ratings = json.load(file)
-
-        print("Loading RateMyProfessors data...")
-        with open("ratings/rmp_ratings.json", "r", encoding="utf-8") as file:
-            rmp_data = json.load(file)
+        print("Scraping professor data from RateMyProfessors...")
+        rmp_data = scrape_rmp_data(university_id="1273")
 
         print("Matching professor data from both sources...")
         matched_data = match_professor_names(ratings, rmp_data)
