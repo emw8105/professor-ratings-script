@@ -13,6 +13,9 @@ def normalize_name(name):
     name = re.sub(r"([A-Z])\.([A-Z])", r"\1 \2", name) # add space between initials
     name = re.sub(r"[.\s]+", " ", name) # removes periods and extra spaces
     name = re.sub(r'\.', '', name)
+    name = re.sub(r"[’'ʻ`]", "", name)
+
+
     name = name.replace('-', ' ')
 
     if ", " in name: # handle the Last, First formats by splitting up and swapping

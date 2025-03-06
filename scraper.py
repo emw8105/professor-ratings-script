@@ -18,8 +18,8 @@ def setup_driver(headless=True):
         chrome_options = Options()
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--ignore-certificate-errors")
-        # if headless:
-            # chrome_options.add_argument("--headless")
+        if headless:
+            chrome_options.add_argument("--headless")
         driver = webdriver.Chrome(options=chrome_options)
         driver.set_page_load_timeout(2)
         return driver
@@ -221,10 +221,10 @@ def query_rmp(headers, school_id):
 
                 professor_name = f"{dn['firstName']} {dn['lastName']}"
                 key = normalize_professor_name(professor_name)
-                
+
                 if key in all_professors:
                     all_professors[key].append(professor_data)
-                    print(f"Duplicate professor name found: {key}")
+                    print(f"Duplicate RMP professor name found: {key}")
                 else:
                     all_professors[key] = [professor_data]
 
