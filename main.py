@@ -35,9 +35,6 @@ def generate_name_variations(name):
             variations.add(f"{parts[0]} {parts[-3]} {parts[-2]}") # first and last 2 parts minus the last
             variations.add(f"{parts[0]} {parts[-3]}") # first and first part of the last name
 
-    # direct first/last name combinations
-    # ...
-
     return variations
 
 def check_course_overlap(rmp_info, ratings_info):
@@ -227,7 +224,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     with open("unmatched/unmatched_rmp.json", "w", encoding="utf-8") as f:
         json.dump(unmatched_rmp, f, indent=4, ensure_ascii=False)
     
-    with open("matched/matched_professor_data.json", "w", encoding="utf-8") as f:
+    with open("matched/matched_professor_data_list.json", "w", encoding="utf-8") as f:
         json.dump(matched_data, f, indent=4, ensure_ascii=False)
 
     return restructure_matched_data(matched_data)
@@ -255,7 +252,7 @@ def main():
         print("Matching professor data from both sources...")
         matched_data = match_professor_names(ratings, rmp_data)
 
-        with open("matched/final_professor_data.json", "w", encoding="utf-8") as outfile:
+        with open("matched/matched_professor_data.json", "w", encoding="utf-8") as outfile:
             json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
         print(f"Matched professor data saved to matched/matched_professor_data.json")
@@ -270,7 +267,7 @@ def main():
         print("Matching professor data from both sources...")
         matched_data = match_professor_names(ratings, rmp_data)
 
-        with open("matched/final_professor_data.json", "w", encoding="utf-8") as outfile:
+        with open("matched/matched_professor_data.json", "w", encoding="utf-8") as outfile:
             json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
         print(f"Matched professor data saved to matched/matched_professor_data.json")
