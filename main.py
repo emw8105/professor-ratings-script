@@ -101,12 +101,48 @@ def restructure_matched_data(matched_data):
         restructured_data[normalized_name].append(data)
     return restructured_data
 
+# applies manual matches from a JSON file, i.e. Yu Chung Ng is Vincent Ng in RMP so that matching is done from deliberate user input
+def apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatched_rmp, matched_data):
+    """Applies manual matches from a JSON file, normalizing names before matching."""
+    try:
+        with open("manual_matches.json", "r", encoding="utf-8") as f:
+            manual_matches = json.load(f)
+    except FileNotFoundError:
+        print("manual_matches.json not found. Manual matches will be skipped.")
+        return
+
+    # this is effectively the same logic as the direct matching, but the names are manually matched, still checking for duplicates though
+    for match in manual_matches:
+        ratings_name = normalize_name(match["ratings_name"])
+        rmp_name = normalize_name(match["rmp_name"])
+
+        normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
+        normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
+
+        if ratings_name in normalized_ratings and rmp_name in normalized_rmp_data:
+            original_ratings_name, ratings_list = normalized_ratings[ratings_name]
+            rmp_list = normalized_rmp_data[rmp_name]
+
+            matched_entry = process_direct_match(ratings_list, rmp_list)
+
+            if matched_entry:
+                matched_data[original_ratings_name] = matched_entry
+                original_rmp_name = list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_name)]
+                remove_matched_names(original_ratings_name, original_rmp_name, unmatched_ratings_original, unmatched_rmp)
+                print(f"Manual match applied: {original_ratings_name} -> {original_rmp_name}")
+            else:
+                print(f"Manual match failed: No matching courses found for {ratings_name} -> {rmp_name}")
+        else:
+            print(f"Manual match failed: {ratings_name} or {rmp_name} not found.")
+
 # main match logic driver function
 def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     """Matches professor data, handles name variations, and saves unmatched names."""
     matched_data = {}
     unmatched_ratings_original = list(ratings.keys())
     unmatched_rmp = list(rmp_data.keys())
+
+    apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatched_rmp, matched_data)
 
     normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
     normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
@@ -219,7 +255,7 @@ def main():
         print("Matching professor data from both sources...")
         matched_data = match_professor_names(ratings, rmp_data)
 
-        with open("matched/matched_professor_data.json", "w", encoding="utf-8") as outfile:
+        with open("matched/final_professor_data.json", "w", encoding="utf-8") as outfile:
             json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
         print(f"Matched professor data saved to matched/matched_professor_data.json")
