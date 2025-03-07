@@ -86,6 +86,21 @@ def remove_matched_names(original_ratings_name, original_rmp_name, unmatched_rat
     if original_rmp_name in unmatched_rmp:
         unmatched_rmp.remove(original_rmp_name)
 
+# restructures the matched data into a dictionary with normalized professor names as keys and lists of professor data as values
+# technically this is not necessary, but it makes it easier to work with the data later on by grouping the duplicates together under the same key
+def restructure_matched_data(matched_data):
+    """
+    Restructures matched data into a dictionary with normalized professor names as keys
+    and lists of professor data as values.
+    """
+    restructured_data = {}
+    for original_name, data in matched_data.items():
+        normalized_name = normalize_name(original_name)
+        if normalized_name not in restructured_data:
+            restructured_data[normalized_name] = []
+        restructured_data[normalized_name].append(data)
+    return restructured_data
+
 # main match logic driver function
 def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     """Matches professor data, handles name variations, and saves unmatched names."""
@@ -175,8 +190,11 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     
     with open("unmatched/unmatched_rmp.json", "w", encoding="utf-8") as f:
         json.dump(unmatched_rmp, f, indent=4, ensure_ascii=False)
+    
+    with open("matched/matched_professor_data.json", "w", encoding="utf-8") as f:
+        json.dump(matched_data, f, indent=4, ensure_ascii=False)
 
-    return matched_data
+    return restructure_matched_data(matched_data)
 
 def main():
     parser = argparse.ArgumentParser(description="Professor Data Matching Script")
@@ -216,7 +234,7 @@ def main():
         print("Matching professor data from both sources...")
         matched_data = match_professor_names(ratings, rmp_data)
 
-        with open("matched/matched_professor_data.json", "w", encoding="utf-8") as outfile:
+        with open("matched/final_professor_data.json", "w", encoding="utf-8") as outfile:
             json.dump(matched_data, outfile, indent=4, ensure_ascii=False)
 
         print(f"Matched professor data saved to matched/matched_professor_data.json")
