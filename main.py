@@ -53,10 +53,10 @@ def check_course_overlap(rmp_info, ratings_info):
 # direct match is when the names are exactly the same, or when the names are effectively the same after normalization
 def process_direct_match(ratings_list, rmp_list):
     """Processes a direct match and returns the matched data."""
-    if len(ratings_list) == 1 and len(rmp_list) == 1: # if there are no duplicate profs with the same name, we can immedaitely match them
-        return {**rmp_list[0], **ratings_list[0]}
+    if len(ratings_list) == 1 and len(rmp_list) == 1:
+        rmp_info_cleaned = {k: v for k, v in rmp_list[0].items() if k != "courses"}
+        return {**rmp_info_cleaned, **ratings_list[0]}
 
-    # if there are multiple profs with the same name, we need to find the best match using their courses
     best_rmp_match = None
     best_ratings_match = None
     best_rmp_score = 0
@@ -71,7 +71,7 @@ def process_direct_match(ratings_list, rmp_list):
                     best_ratings_match = ratings_info
 
     if best_rmp_match:
-        rmp_info_cleaned = {k: v for k, v in best_rmp_match.items() if k not in ["courses"]}
+        rmp_info_cleaned = {k: v for k, v in best_rmp_match.items() if k != "courses"} # remove the RMP course list from the final data since the courses are already in the ratings data
         return {**rmp_info_cleaned, **best_ratings_match}
 
     return None
