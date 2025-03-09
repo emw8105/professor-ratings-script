@@ -42,20 +42,33 @@ The data is stored in a JSON-like structure where keys are normalized professor 
 }
 ```
 
-`department`: Professor's department.
+`department`: Professor's listed department from RMP.
+
 `url`: RateMyProfessor profile URL.
+
 `quality_rating`: Overall quality rating from RMP.
+
 `difficulty_rating`: Difficulty rating from RMP.
+
 `would_take_again`: Percentage of students who would take the professor again. (-1 if N/A)
+
 `original_rmp_format`: The name that was originally stored on ratemyprofessor.
+
 `last_updated`: Timestamp of the last data update.
+
 `ratings_count`: Number of RMP ratings.
+
 `tags`: RMP tags (e.g., "Amazing lectures").
+
 `rmp_id`: RateMyProfessor ID.
-`instructor_id`: UTD Grades instructor ID.
-`overall_grade_rating`: Overall grade rating from UTD Grades.
+
+`instructor_id`: UTD Grades instructor ID listed on Coursebook.
+
+`overall_grade_rating`: Overall grade rating from UTD Grades (average from 4.0 scaled up to 5.0).
+
 `total_grade_count`: Total number of grades in UTD Grades.
-`course_ratings`: Course-specific grade ratings.
+
+`course_ratings`: Course-specific grade ratings (average from 4.0 scaled up to 5.0).
 
 ### Example Professor Entry
 
