@@ -235,6 +235,11 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
                     matched_names.add(original_ratings_name)
                 else:
                     print(f"Fuzzy match rejected for {original_ratings_name} due to no matching courses.")
+                    remove_matched_entries(ratings_info, best_rmp_match, ratings, rmp_data)
+            else:
+                print(f"Fuzzy match rejected for {original_ratings_name} due to no matching RMP professor with shared courses.")
+        else:
+            print(f"Fuzzy match rejected for {original_ratings_name} due to no name matches found.")
 
     matched_professors_count = len(matched_data)
     print(f"Matched Professors: {matched_professors_count}")
