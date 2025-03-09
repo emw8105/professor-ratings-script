@@ -76,30 +76,19 @@ def process_direct_match(ratings_list, rmp_list):
 
     return None
 
-def remove_matched_names(original_ratings_name, original_rmp_name, unmatched_ratings_original, unmatched_rmp):
-    """Removes matched names from unmatched lists."""
-    if original_ratings_name in unmatched_ratings_original:
-        unmatched_ratings_original.remove(original_ratings_name)
-    if original_rmp_name in unmatched_rmp:
-        unmatched_rmp.remove(original_rmp_name)
-
-# restructures the matched data into a dictionary with normalized professor names as keys and lists of professor data as values
-# technically this is not necessary, but it makes it easier to work with the data later on by grouping the duplicates together under the same key
-def restructure_matched_data(matched_data):
-    """
-    Restructures matched data into a dictionary with normalized professor names as keys
-    and lists of professor data as values.
-    """
-    restructured_data = {}
-    for original_name, data in matched_data.items():
-        normalized_name = normalize_name(original_name)
-        if normalized_name not in restructured_data:
-            restructured_data[normalized_name] = []
-        restructured_data[normalized_name].append(data)
-    return restructured_data
+def remove_matched_entries(matched_ratings_entry, matched_rmp_entry, ratings, rmp_data):
+    """Removes the specific matched entries from ratings and rmp_data."""
+    for ratings_key, ratings_list in list(ratings.items()):
+        ratings[ratings_key] = [entry for entry in ratings_list if entry.get("instructor_id") != matched_ratings_entry.get("instructor_id")]
+        if not ratings[ratings_key]:
+            del ratings[ratings_key]
+    for rmp_key, rmp_list in list(rmp_data.items()):
+        rmp_data[rmp_key] = [entry for entry in rmp_list if entry.get("rmp_id") != matched_rmp_entry.get("rmp_id")]
+        if not rmp_data[rmp_key]:
+            del rmp_data[rmp_key]
 
 # applies manual matches from a JSON file, i.e. Yu Chung Ng is Vincent Ng in RMP so that matching is done from deliberate user input
-def apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatched_rmp, matched_data):
+def apply_manual_matches(ratings, rmp_data, matched_data):
     """Applies manual matches from a JSON file, normalizing names before matching."""
     try:
         with open("manual_matches.json", "r", encoding="utf-8") as f:
@@ -108,13 +97,19 @@ def apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatche
         print("manual_matches.json not found. Manual matches will be skipped.")
         return
 
-    # this is effectively the same logic as the direct matching, but the names are manually matched, still checking for duplicates though
+    try:
+        with open("manual_matches.json", "r", encoding="utf-8") as f:
+            manual_matches = json.load(f)
+    except FileNotFoundError:
+        print("manual_matches.json not found. Manual matches will be skipped.")
+        return
+
+    normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
+    normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
+
     for match in manual_matches:
         ratings_name = normalize_name(match["ratings_name"])
         rmp_name = normalize_name(match["rmp_name"])
-
-        normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
-        normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
 
         if ratings_name in normalized_ratings and rmp_name in normalized_rmp_data:
             original_ratings_name, ratings_list = normalized_ratings[ratings_name]
@@ -123,10 +118,20 @@ def apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatche
             matched_entry = process_direct_match(ratings_list, rmp_list)
 
             if matched_entry:
-                matched_data[original_ratings_name] = matched_entry
-                original_rmp_name = list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_name)]
-                remove_matched_names(original_ratings_name, original_rmp_name, unmatched_ratings_original, unmatched_rmp)
-                print(f"Manual match applied: {original_ratings_name} -> {original_rmp_name}")
+                if original_ratings_name not in matched_data:
+                    matched_data[original_ratings_name] = []
+                matched_data[original_ratings_name].append(matched_entry)
+                original_rmp_name = None
+                for original_name, norm_data in rmp_data.items():
+                    if normalize_name(original_name) == rmp_name:
+                        original_rmp_name = original_name
+                        break
+
+                if original_ratings_name in ratings and original_rmp_name in rmp_data:
+                    remove_matched_entries(matched_entry, matched_entry, ratings, rmp_data)
+                    print(f"Manual match applied: {original_ratings_name} -> {original_rmp_name}")
+                else:
+                    print(f"Manual match failed: Could not find entries in source dictionaries.")
             else:
                 print(f"Manual match failed: No matching courses found for {ratings_name} -> {rmp_name}")
         else:
@@ -136,15 +141,14 @@ def apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatche
 def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     """Matches professor data, handles name variations, and saves unmatched names."""
     matched_data = {}
-    unmatched_ratings_original = list(ratings.keys())
-    unmatched_rmp = list(rmp_data.keys())
+    ratings_to_append = list(ratings.keys())
+    matched_names = set()
 
-    apply_manual_matches(ratings, rmp_data, unmatched_ratings_original, unmatched_rmp, matched_data)
+    apply_manual_matches(ratings, rmp_data, matched_data)
 
     normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
     normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
 
-    # have to recursively sum the lengths of the lists in the values of the dictionaries to count the total entries across duplicate names
     total_ratings_entries = sum(len(data_list) for _, data_list in normalized_ratings.values())
     total_rmp_entries = sum(len(rmp_list) for _, rmp_list in normalized_rmp_data.items())
     print(f"Now matching {total_ratings_entries} grade ratings entries to {total_rmp_entries} RateMyProfessors entries...")
@@ -157,32 +161,41 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
             matched_entry = process_direct_match(ratings_list, rmp_list)
 
             if matched_entry:
-                matched_data[original_ratings_name] = matched_entry
-                original_rmp_name = list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)]
-                remove_matched_names(original_ratings_name, original_rmp_name, unmatched_ratings_original, unmatched_rmp)
-                direct_match_count += 1
+                if original_ratings_name not in matched_data:
+                    matched_data[original_ratings_name] = []
+                matched_data[original_ratings_name].append(matched_entry)
+                original_rmp_name = None
+                for original_name, norm_data in rmp_data.items():
+                    if normalize_name(original_name) == rmp_norm:
+                        original_rmp_name = original_name
+                        break
+
+                if original_rmp_name is None:
+                    print(f"Warning: Original RMP name not found for normalized name {rmp_norm}.")
+                    continue
+
+                if original_ratings_name in ratings and original_rmp_name in rmp_data:
+                    remove_matched_entries(matched_entry, matched_entry, ratings, rmp_data)
+                    direct_match_count += 1
+                    matched_names.add(original_ratings_name)
 
     print(f"Direct Matches: {direct_match_count}")
 
-    remaining_ratings = {k: ratings[k] for k in unmatched_ratings_original}
-    normalized_remaining_ratings = {normalize_name(name): (name, data) for name, data in remaining_ratings.items()}
+    normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
+    normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
 
-    # for the remaining non-directly matched ratings, we will fuzzy match them and check their courses for overlap to determine if a match is valid
-    print(f"Remaining Ratings to Fuzzy Match: {len(normalized_remaining_ratings)}, now matching...")
+    print(f"Remaining Ratings to Fuzzy Match: {len(normalized_ratings)}, now matching...")
 
-    for ratings_norm, (original_ratings_name, ratings_list) in normalized_remaining_ratings.items():
-        if original_ratings_name not in unmatched_ratings_original:
+    for original_ratings_name, ratings_list in list(ratings.items()):
+        if original_ratings_name not in ratings:
             continue
+        ratings_norm = normalize_name(original_ratings_name)
         best_match = None
         best_score = 0
 
         ratings_info = ratings_list[0]
 
         for rmp_norm, rmp_list in normalized_rmp_data.items():
-            if list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(rmp_norm)] not in unmatched_rmp:
-                continue
-
-            # find the best fuzzy match between the ratings and RMP names
             for ratings_variation in generate_name_variations(ratings_norm):
                 for rmp_variation in generate_name_variations(rmp_norm):
                     score = fuzz.ratio(ratings_variation, rmp_variation)
@@ -191,8 +204,6 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
                         best_score = score
                         best_match = rmp_norm
 
-        # if a best match is found, we check the courses for overlap and select the best match based on the RMP ratings count
-        # i.e. if more than one RMP entry matches the same ratings entry, we select the one with the most reviews (people make multiple profiles for the same professor)
         if best_match:
             best_rmp_match = None
             best_rmp_score = 0
@@ -206,28 +217,49 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 
             if best_rmp_match:
                 rmp_info_cleaned = {k: v for k, v in best_rmp_match.items() if k not in ["courses"]}
-                matched_data[original_ratings_name] = {**rmp_info_cleaned, **ratings_info}
-                original_rmp_name = list(rmp_data.keys())[list(normalized_rmp_data.keys()).index(best_match)]
+                if original_ratings_name not in matched_data:
+                    matched_data[original_ratings_name] = []
+                matched_data[original_ratings_name].append({**rmp_info_cleaned, **ratings_info})
+                original_rmp_name = None
+                for original_name, norm_data in rmp_data.items():
+                    if normalize_name(original_name) == best_match:
+                        original_rmp_name = original_name
+                        break
 
-                # remove matched names from unmatched lists
-                remove_matched_names(original_ratings_name, original_rmp_name, unmatched_ratings_original, unmatched_rmp)
+                if original_rmp_name is None:
+                    print(f"Warning: Original RMP name not found for normalized name {best_match}.")
+                    continue
+
+                if original_ratings_name in ratings and original_rmp_name in rmp_data:
+                    remove_matched_entries(ratings_info, best_rmp_match, ratings, rmp_data)
+                    matched_names.add(original_ratings_name)
+                else:
+                    print(f"Fuzzy match rejected for {original_ratings_name} due to no matching courses.")
+
+    matched_professors_count = len(matched_data)
+    print(f"Matched Professors: {matched_professors_count}")
+
+    # append the unmatched ratings data to the final matched data using original names
+    for original_ratings_name in ratings_to_append:
+        if original_ratings_name in ratings:
+            if original_ratings_name not in matched_data:
+                matched_data[original_ratings_name] = ratings[original_ratings_name]
             else:
-                print(f"Fuzzy match rejected for {original_ratings_name} due to no matching courses.")
+                matched_data[original_ratings_name].extend(ratings[original_ratings_name])
 
-    print(f"Unmatched Ratings: {len(unmatched_ratings_original)}")
-    print(f"Unmatched RMP: {len(unmatched_rmp)}")
-    print(f"Matched Professors: {len(matched_data)}")
+    print(f"Unmatched Ratings: {len(ratings)}")
+    print(f"Unmatched RMP: {len(rmp_data)}")
+
+    total_professors = len(matched_data)
+    print(f"Total professors in data: {total_professors}")
 
     with open("unmatched/unmatched_ratings.json", "w", encoding="utf-8") as f:
-        json.dump(unmatched_ratings_original, f, indent=4, ensure_ascii=False)
-    
-    with open("unmatched/unmatched_rmp.json", "w", encoding="utf-8") as f:
-        json.dump(unmatched_rmp, f, indent=4, ensure_ascii=False)
-    
-    with open("matched/matched_professor_data_list.json", "w", encoding="utf-8") as f:
-        json.dump(matched_data, f, indent=4, ensure_ascii=False)
+        json.dump(ratings, f, indent=4, ensure_ascii=False)
 
-    return restructure_matched_data(matched_data)
+    with open("unmatched/unmatched_rmp.json", "w", encoding="utf-8") as f:
+        json.dump(rmp_data, f, indent=4, ensure_ascii=False)
+
+    return matched_data
 
 def main():
     parser = argparse.ArgumentParser(description="Professor Data Matching Script")
