@@ -57,6 +57,45 @@ The data is stored in a JSON-like structure where keys are normalized professor 
 `total_grade_count`: Total number of grades in UTD Grades.
 `course_ratings`: Course-specific grade ratings.
 
+### Example Professor Entry
+
+There are two professors with the name "Jason Bennett" at UTD, each is stored together in the list for the normalized key 'jason bennett', where one was matched with the singular RMP profile for a "Jason Bennett"
+
+```
+"jason bennett": [
+        {
+            "department": "Rhetoric",
+            "url": "https://www.ratemyprofessors.com/professor/3044802",
+            "quality_rating": 5,
+            "difficulty_rating": 1,
+            "would_take_again": 100,
+            "original_rmp_format": "Jason Bennett",
+            "last_updated": "2025-03-08T23:07:48.353461",
+            "ratings_count": 1,
+            "tags": [
+                "Participation matters",
+                "Amazing lectures ",
+                "Gives good feedback"
+            ],
+            "rmp_id": "3044802",
+            "instructor_id": "jhb042000",
+            "overall_grade_rating": 4.13,
+            "total_grade_count": 34,
+            "course_ratings": {
+                "RHET1302": 4.13
+            }
+        },
+        {
+            "instructor_id": "jxb230049",
+            "overall_grade_rating": 4.5,
+            "total_grade_count": 309,
+            "course_ratings": {
+                "MUSI1306": 4.5
+            }
+        }
+    ],
+```
+
 ## Matching Logic
 
 1. **Manual Matches**: Applies predefined mappings from manual_matches.json for known name variations (Yu Chung Ng --> Vincent Ng).
