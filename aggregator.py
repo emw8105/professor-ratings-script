@@ -12,17 +12,15 @@ def normalize_name(name):
     name = re.sub(r"\s+[A-Z](\.[A-Z])*\s*$", "", name) # remove middle initials
     name = re.sub(r"([A-Z])\.([A-Z])", r"\1 \2", name) # add space between initials
     name = re.sub(r"[.\s]+", " ", name) # removes periods and extra spaces
-    name = re.sub(r'\.', '', name)
-    name = re.sub(r"[’'ʻ`]", "", name)
-
-
-    name = name.replace('-', ' ')
+    name = re.sub(r"[’'ʻ`]", "", name) # remove apostrophes
+    name = name.replace('-', ' ') # replace hyphens with spaces
 
     if ", " in name: # handle the Last, First formats by splitting up and swapping
         last, first = name.split(", ", 1)
         return f"{first.strip().lower()} {last.strip().lower()}"
     else:
         return name.strip().lower()
+
 
 def extract_first_instructor(instructor_string, instructor_id_string):
     """Extracts the first instructor's name and ID from strings."""
@@ -31,7 +29,8 @@ def extract_first_instructor(instructor_string, instructor_id_string):
     if names and ids:
         return names[0], ids[0]
     return None, None
-    
+
+
 def process_section_data(section_data_dir="data/classes"):
     """Processes section data to create a name-based professor mapping."""
     professor_name_map = {}
@@ -75,6 +74,7 @@ def process_section_data(section_data_dir="data/classes"):
     # with open("data/professor_name_map.json", "w", encoding="utf-8") as outfile:
     #     json.dump(professor_name_map, outfile, indent=4, ensure_ascii=False)
     return professor_name_map
+
 
 def calculate_professor_ratings(grades_data_dir="data/grades", section_data_dir="data/classes", output_filename="ratings/grade_ratings.json"):
     """Calculates professor ratings based on grade distributions from CSV files."""

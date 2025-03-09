@@ -15,6 +15,7 @@ def extract_course_department(course_code):
         return match.group(1)
     return None
 
+
 def generate_name_variations(name):
     """Generates variations of a name by trying different combinations of parts."""
     parts = name.split()
@@ -37,6 +38,7 @@ def generate_name_variations(name):
 
     return variations
 
+
 def check_course_overlap(rmp_info, ratings_info):
     """Checks for course overlap between RMP and ratings data."""
     rmp_courses = set(rmp_info.get("courses", []))
@@ -50,13 +52,15 @@ def check_course_overlap(rmp_info, ratings_info):
 
     return rmp_courses.intersection(ratings_courses) or rmp_headers.intersection(ratings_headers) or rmp_numbers.intersection(ratings_numbers)
 
+
 # direct match is when the names are exactly the same, or when the names are effectively the same after normalization
 def process_direct_match(ratings_list, rmp_list):
     """Processes a direct match and returns the matched data."""
-    if len(ratings_list) == 1 and len(rmp_list) == 1:
+    if len(ratings_list) == 1 and len(rmp_list) == 1: # if there's only one entry in each list, we can assume they are the same person and match them directly
         rmp_info_cleaned = {k: v for k, v in rmp_list[0].items() if k != "courses"}
         return {**rmp_info_cleaned, **ratings_list[0]}
 
+    # if there are multiple entries, we need to find the most likely match based on the courses taught by each and the number of ratings (sometimes the same prof has multiple RMP profiles so this selects the most used one effectively)
     best_rmp_match = None
     best_ratings_match = None
     best_rmp_score = 0
@@ -76,19 +80,21 @@ def process_direct_match(ratings_list, rmp_list):
 
     return None
 
+
 def remove_matched_entries(matched_ratings_entry, matched_rmp_entry, ratings, rmp_data):
     """Removes the specific matched entries from ratings and rmp_data."""
     for ratings_key, ratings_list in list(ratings.items()):
-        ratings[ratings_key] = [entry for entry in ratings_list if entry.get("instructor_id") != matched_ratings_entry.get("instructor_id")]
+        ratings[ratings_key] = [entry for entry in ratings_list if entry.get("instructor_id") != matched_ratings_entry.get("instructor_id")] # use the instructor_id to remove the proper entry from the list of profs with that name
         if not ratings[ratings_key]:
             del ratings[ratings_key]
     for rmp_key, rmp_list in list(rmp_data.items()):
-        rmp_data[rmp_key] = [entry for entry in rmp_list if entry.get("rmp_id") != matched_rmp_entry.get("rmp_id")]
+        rmp_data[rmp_key] = [entry for entry in rmp_list if entry.get("rmp_id") != matched_rmp_entry.get("rmp_id")] # use the rmp_id to remove the proper entry from the list of profs with that name
         if not rmp_data[rmp_key]:
             del rmp_data[rmp_key]
 
+
 # applies manual matches from a JSON file, i.e. Yu Chung Ng is Vincent Ng in RMP so that matching is done from deliberate user input
-def apply_manual_matches(ratings, rmp_data, matched_data):
+def apply_manual_matches(ratings, rmp_data, matched_data, normalized_ratings, normalized_rmp_data):
     """Applies manual matches from a JSON file, normalizing names before matching."""
     try:
         with open("manual_matches.json", "r", encoding="utf-8") as f:
@@ -97,16 +103,7 @@ def apply_manual_matches(ratings, rmp_data, matched_data):
         print("manual_matches.json not found. Manual matches will be skipped.")
         return
 
-    try:
-        with open("manual_matches.json", "r", encoding="utf-8") as f:
-            manual_matches = json.load(f)
-    except FileNotFoundError:
-        print("manual_matches.json not found. Manual matches will be skipped.")
-        return
-
-    normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
-    normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
-
+    # a lot of this logic is the exact same as the direct match logic but refactoring it into a function is a bit tough because of the minor differences between them
     for match in manual_matches:
         ratings_name = normalize_name(match["ratings_name"])
         rmp_name = normalize_name(match["rmp_name"])
@@ -137,6 +134,7 @@ def apply_manual_matches(ratings, rmp_data, matched_data):
         else:
             print(f"Manual match failed: {ratings_name} or {rmp_name} not found.")
 
+
 # main match logic driver function
 def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     """Matches professor data, handles name variations, and saves unmatched names."""
@@ -144,10 +142,10 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     ratings_to_append = list(ratings.keys())
     matched_names = set()
 
-    apply_manual_matches(ratings, rmp_data, matched_data)
-
     normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
     normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
+
+    apply_manual_matches(ratings, rmp_data, matched_data, normalized_ratings, normalized_rmp_data) # apply manual matches before processing
 
     total_ratings_entries = sum(len(data_list) for _, data_list in normalized_ratings.values())
     total_rmp_entries = sum(len(rmp_list) for _, rmp_list in normalized_rmp_data.items())
@@ -176,14 +174,10 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
 
                 if original_ratings_name in ratings and original_rmp_name in rmp_data:
                     remove_matched_entries(matched_entry, matched_entry, ratings, rmp_data)
-                    direct_match_count += 1
                     matched_names.add(original_ratings_name)
+                    direct_match_count += 1
 
     print(f"Direct Matches: {direct_match_count}")
-
-    normalized_ratings = {normalize_name(name): (name, data) for name, data in ratings.items()}
-    normalized_rmp_data = {normalize_name(name): data for name, data in rmp_data.items()}
-
     print(f"Remaining Ratings to Fuzzy Match: {len(normalized_ratings)}, now matching...")
 
     for original_ratings_name, ratings_list in list(ratings.items()):
@@ -241,7 +235,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
         else:
             print(f"Fuzzy match rejected for {original_ratings_name} due to no name matches found.")
 
-    matched_professors_count = len(matched_data)
+    matched_professors_count = len(matched_data) # this is an estimate because it doesnt count the elements in the lists, just the keys so profs with the same name are considered 1
     print(f"Matched Professors: {matched_professors_count}")
 
     # append the unmatched ratings data to the final matched data using original names
@@ -256,7 +250,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
     print(f"Unmatched RMP: {len(rmp_data)}")
 
     total_professors = len(matched_data)
-    print(f"Total professors in data: {total_professors}")
+    print(f"Total professors in data: {total_professors}") # this is an estimate because it doesnt count the elements in the lists, just the keys so profs with the same name are considered 1
 
     with open("unmatched/unmatched_ratings.json", "w", encoding="utf-8") as f:
         json.dump(ratings, f, indent=4, ensure_ascii=False)
@@ -265,6 +259,7 @@ def match_professor_names(ratings, rmp_data, fuzzy_threshold=80):
         json.dump(rmp_data, f, indent=4, ensure_ascii=False)
 
     return matched_data
+
 
 def main():
     parser = argparse.ArgumentParser(description="Professor Data Matching Script")

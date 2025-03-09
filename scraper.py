@@ -10,7 +10,6 @@ import json
 import datetime
 import requests
 
-
 def setup_driver(headless=True):
     """Sets up and returns a Selenium WebDriver."""
     driver = None
@@ -28,6 +27,7 @@ def setup_driver(headless=True):
         print("Go to https://googlechromelabs.github.io/chrome-for-testing/#stable to download the latest version of ChromeDriver. Copy the executable to the root folder of this project. You may also need the latest version of Chrome; make sure your chrome is updated.")
         exit(1)
 
+
 def close_cookie_popup(driver):
     """Closes the cookie popup if it exists."""
     try:
@@ -40,6 +40,7 @@ def close_cookie_popup(driver):
         time.sleep(2)
     except Exception as e:
         print("No cookie popup found or issue clicking it:", e)
+
 
 def get_headers(driver, school_id):
     """Gets the necessary headers and school ID from the GraphQL request."""
@@ -94,6 +95,17 @@ def get_headers(driver, school_id):
             print("-" * 50)
             return graphql_headers, m[0]
     return None, None
+
+
+def normalize_course_name(course_name):
+    """Normalizes a course name to uppercase and removes spaces and hyphens."""
+    return re.sub(r'[-_\s]+', '', course_name).upper()
+
+
+def normalize_professor_name(name):
+    """Normalizes professor names by removing extra spaces and converting to lowercase."""
+    return " ".join(name.lower().split())
+
 
 def query_rmp(headers, school_id):
     """Queries the RMP GraphQL API to retrieve professor data."""
@@ -240,14 +252,6 @@ def query_rmp(headers, school_id):
 
     return all_professors
 
-def normalize_course_name(course_name):
-    """Normalizes a course name to uppercase and removes spaces and hyphens."""
-    return re.sub(r'[-_\s]+', '', course_name).upper()
-
-def normalize_professor_name(name):
-    """Normalizes professor names by removing extra spaces and converting to lowercase."""
-    return " ".join(name.lower().split())
-
 
 def scrape_rmp_data(university_id):
     """Scrapes professor data from RateMyProfessors."""
@@ -289,7 +293,7 @@ def scrape_rmp_data(university_id):
 
 
 
-# old webscrape implementation
+# old webscrape implementation, it seems the graphql api is much faster but has a tendency to occasionally not return all the data, such as courses, tags, and the would_take_again values, might still need this
 
 # def extract_professor_data(page_source):
 #     """Extracts and normalizes professor data from the page source."""
