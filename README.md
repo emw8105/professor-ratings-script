@@ -44,7 +44,7 @@ The data is stored in a JSON-like structure where keys are normalized professor 
 
 `department`: Professor's listed department from RMP.
 
-`url`: RateMyProfessor profile URL.
+`url`: RateMyProfessors profile URL.
 
 `quality_rating`: Overall quality rating from RMP.
 
@@ -60,13 +60,13 @@ The data is stored in a JSON-like structure where keys are normalized professor 
 
 `tags`: RMP tags (e.g., "Amazing lectures").
 
-`rmp_id`: RateMyProfessor ID.
+`rmp_id`: RateMyProfessors ID.
 
-`instructor_id`: UTD Grades instructor ID listed on Coursebook.
+`instructor_id`: Instructor ID listed on Coursebook.
 
-`overall_grade_rating`: Overall grade rating from UTD Grades (average from 4.0 scaled up to 5.0).
+`overall_grade_rating`: Overall grade rating from grade data (average from 4.0 scaled up to 5.0).
 
-`total_grade_count`: Total number of grades in UTD Grades.
+`total_grade_count`: Total number of grades in grade data.
 
 `course_ratings`: Course-specific grade ratings (average from 4.0 scaled up to 5.0).
 
@@ -151,6 +151,22 @@ name = name.replace('-', ' ') # replace hyphens with spaces
 ## Code
 
 All original code and commit history is available at: https://github.com/emw8105/professor-ratings-script
+
+* **`aggregator.py`:** This file aggregates professor grade data from the grade distributions sourced from UTD Grades. It includes functions for name normalization, extracting data from the given CSV grades data, matching the data with the Coursebook classes data, processing the data, and calculating both per course and overall grade ratings for each professor
+* **`scraper.py`:** This file is responsible for scraping professor data from RateMyProfessors. It utilizes selenium to obtain header information on the RMP site to access the RMP internal GraphQL API, which it then sends requests to extract relevant information such as quality ratings, difficulty ratings, tags, and ratings counts.
+* **`main.py`:** This file serves as the entry point for the program and contains the core logic for matching professor data from RateMyProfessors (RMP) and UTD Grades. It includes functionionality for direct matching, fuzzy matching, and handling duplicate professor entries. It also handles the creation of the final JSON output.
+
+### Data Sources
+
+The project utilizes the following data sources:
+
+* **`data/classes`:** This file contains a list of classes and their respective professors from Coursebook. It is used to identify course overlap during the matching process. Data is sourced from [https://github.com/MichaelZhao21/scrape-coursebook](https://github.com/MichaelZhao21/scrape-coursebook)
+* **`data/grades`:** This file contains grade distribution data from UTD Grades, including overall grade ratings and course-specific grade ratings. Data is sourced from [https://github.com/acmutd/utd-grades/tree/master/raw_data](https://github.com/acmutd/utd-grades/tree/master/raw_data)
+* **RateMyProfessors:** The program queries the GraphQL API on the RateMyProfessors website to retrieve RMP information for UTD Professors.
+
+The `classes` and `grades` files are assumed to be pre-existing and properly formatted. The program focuses on processing and merging this data with the scraped RMP data.
+
+The python code can be found on GitHub: [https://github.com/emw8105/professor-ratings-script/tree/main](https://github.com/emw8105/professor-ratings-script/tree/main)
 
 ## Notes
 
