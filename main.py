@@ -20,21 +20,23 @@ def generate_name_variations(name):
     """Generates variations of a name by trying different combinations of parts."""
     parts = name.split()
     variations = {name}  # include the og name as a variation as well
+    if len(parts) > 1:
+        variations.add(f"{parts[1]} {parts[0]}") # swap last and first name, this one is for you Bhadrachalam Chitturi --> Chitturi Bhadrachalam and Mohammed Ali --> Ali Mohammed
 
-    if len(parts) > 2:
-        # multi-part last name handling
-        variations.add(f"{parts[0]} {parts[-1]}") # first and last
-        variations.add(f"{parts[0]} {parts[1]}") # first and second part of name, this one is for you Carlos Busso Recabarren --> Carlos Busso
-        variations.add(f"{parts[-1]} {parts[0]}") # last and first
+        if len(parts) > 2:
+            # multi-part last name handling
+            variations.add(f"{parts[0]} {parts[-1]}") # first and last
+            variations.add(f"{parts[0]} {parts[1]}") # first and second part of name, this one is for you Carlos Busso Recabarren --> Carlos Busso
+            variations.add(f"{parts[-1]} {parts[0]}") # last and first
 
-        if len(parts) > 3:
-            variations.add(f"{parts[0]} {parts[2]}") # first and first part of last name, this one is for you Andres Ricardo Sanchez De La Rosa --> Andres Sanchez
-            variations.add(" ".join(parts[1:])) # remove first name.
-            variations.add(" ".join(parts[:-1])) # remove last name.
-            variations.add(f"{parts[0]} {parts[-2]} {parts[-1]}")  # first and last two parts
-            variations.add(f"{parts[0]} {parts[-3]} {parts[-2]} {parts[-1]}") # first and last 3 parts
-            variations.add(f"{parts[0]} {parts[-3]} {parts[-2]}") # first and last 2 parts minus the last
-            variations.add(f"{parts[0]} {parts[-3]}") # first and first part of the last name
+            if len(parts) > 3:
+                variations.add(f"{parts[0]} {parts[2]}") # first and first part of last name, this one is for you Andres Ricardo Sanchez De La Rosa --> Andres Sanchez
+                variations.add(" ".join(parts[1:])) # remove first name.
+                variations.add(" ".join(parts[:-1])) # remove last name.
+                variations.add(f"{parts[0]} {parts[-2]} {parts[-1]}")  # first and last two parts
+                variations.add(f"{parts[0]} {parts[-3]} {parts[-2]} {parts[-1]}") # first and last 3 parts
+                variations.add(f"{parts[0]} {parts[-3]} {parts[-2]}") # first and last 2 parts minus the last
+                variations.add(f"{parts[0]} {parts[-3]}") # first and first part of the last name
 
     return variations
 
