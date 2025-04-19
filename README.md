@@ -160,8 +160,8 @@ All original code and commit history is available at: https://github.com/emw8105
 
 The project utilizes the following data sources:
 
-* **`data/classes`:** This file contains a list of classes and their respective professors from Coursebook. It is used to identify course overlap during the matching process. Data is sourced from [https://github.com/MichaelZhao21/scrape-coursebook](https://github.com/MichaelZhao21/scrape-coursebook)
-* **`data/grades`:** This file contains grade distribution data from UTD Grades, including overall grade ratings and course-specific grade ratings. Data is sourced from [https://github.com/acmutd/utd-grades/tree/master/raw_data](https://github.com/acmutd/utd-grades/tree/master/raw_data)
+* **`data/classes`:** This folder contains a list of sections for each semester at UT Dallas and their respective professors from Coursebook. It is used to identify course overlap during the matching process. Data is sourced from [https://github.com/MichaelZhao21/scrape-coursebook](https://github.com/MichaelZhao21/scrape-coursebook)
+* **`data/grades`:** This folder contains grade distribution data from UTD Grades, including overall grade ratings and course-specific grade ratings. Data is sourced from [https://github.com/acmutd/utd-grades/tree/master/raw_data](https://github.com/acmutd/utd-grades/tree/master/raw_data)
 * **RateMyProfessors:** The program queries the GraphQL API on the RateMyProfessors website to retrieve RMP information for UTD Professors.
 
 The `classes` and `grades` files are assumed to be pre-existing and properly formatted. The program focuses on processing and merging this data with the scraped RMP data.
@@ -171,5 +171,8 @@ The python code can be found on GitHub: [https://github.com/emw8105/professor-ra
 ## Notes
 
 - A "would_take_again" value of -1 indicates N/A.
-- Due to variations in the GraphQL API, slight differences in results have been seen between executions
-  - Ocassionally certain professors may have a -1 would_take_again value, no tags, or no courses, some manual confirmation of the data validity is necessary until fixed
+- Due to inconsistencies in the GraphQL API, slight differences in results have been observed between executions
+  - Ocassionally, certain professors may have a -1 would_take_again value, no tags, or no courses, some manual confirmation of the data validity is necessary until fixed
+
+## TDL
+In order to make the most usage of this matching for the UTD site, the grades data csvs should be matched with Coursebook sections to add the instructor id. Then, a hashmap with the instructor id as the key can be used for quick lookup rather than normalizing the name. This process works for applications such as [SAGE](https://github.com/acmutd/sage-site) that make use of coursebook data, but not UTD Grades since it has no access to the instructor ids without Coursebook matching. This will improve outcomes for professors who change their name and performance for the site in general, as UTD Grades does a normalized query on each professor name as listed and has no retention of identity beyond the name.
